@@ -343,7 +343,7 @@ void gfxFont::draw(int x, int y, std::string_view text, int dst_min_x, int dst_m
         if (dst_min_x <= x + src.w)
             m_sprite.draw(x, y, src);
 
-        x += glyph->w;
+        x += glyph->w + m_letter_spacing;
     }
 }
 
@@ -376,7 +376,7 @@ int gfxFont::getWidth(std::string_view text) const
             continue;
         }
         if (const GlyphArea* glyph = findGlyph(cp))
-            width += glyph->w;
+            width += glyph->w + m_letter_spacing;
     }
     return width;
 }
@@ -400,7 +400,8 @@ std::string gfxFont::fontFamilyName(const std::filesystem::path& ttfPath)
 }
 
 
-gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath)
+gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath,
+    const std::vector<std::string>& fitTexts, int fitWidth)
 {
     const std::string path_str = ttfPath.generic_string();
     std::cout << "loading font " << path_str << " ...";
@@ -410,6 +411,9 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
 
     const FontStyle style = readFontStyle(styleReferencePath);
     constexpr int OUTLINE = 1;
+    // Fonts made to fit a small space share the outline between letters
+    const int letterSpacing = fitWidth > 0 ? -OUTLINE : 0;
+    m_letter_spacing = letterSpacing;
 
     auto font = TtfFontPtr(TTF_OpenFont(path_str.c_str(), static_cast<float>(style.height)));
     if (!font)
@@ -425,15 +429,27 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
         if (capTop + 2 * OUTLINE > style.capHeight)
             return false;
 
-        int width = 0;
-        for (char c : SIZE_SAMPLE) {
-            int advance = 0;
-            TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance);
-            width += advance + (c == ' ' ? OUTLINE : 2 * OUTLINE);
+        const auto widthOf = [&](std::string_view text) {
+            int width = 0;
+            size_t pos = 0;
+            while (pos < text.size()) {
+                const char32_t c = nextCodepoint(text, pos);
+                int advance = 0;
+                TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance);
+                width += advance + (c == ' ' ? OUTLINE : 2 * OUTLINE + letterSpacing);
+            }
+            return width;
+        };
+        if (fitWidth > 0) {
+            for (const std::string& text : fitTexts) {
+                if (widthOf(text) > fitWidth)
+                    return false;
+            }
+            return true;
         }
-        return style.sampleWidth <= 0 || width <= style.sampleWidth;
+        return style.sampleWidth <= 0 || widthOf(SIZE_SAMPLE) <= style.sampleWidth;
     };
-    for (float size = static_cast<float>(style.height); size > 4.f; size -= 0.5f) {
+    for (float size = static_cast<float>(style.height); size > 5.f; size -= 0.5f) {
         TTF_SetFontSize(font.get(), size);
         if (fits())
             break;

@@ -1,5 +1,7 @@
 #include "ResourceManager.h"
 
+#include "Localization.h"
+
 #include "FileList.h"
 #include "Game.h"
 #include "GameValues.h"
@@ -381,6 +383,10 @@ void CResourceManager::loadMenuGraphics()
     const auto builder = [&graphicspack](std::string_view relpath) {
         return ImageLoader(convertPath(relpath, graphicspack));
     };
+    const auto loadOptional = [&graphicspack](std::string_view relpath) {
+        const std::string path = convertPath(relpath, graphicspack);
+        return fs::exists(path) ? ImageLoader(path).create() : gfxSprite();
+    };
 
     menu_shade = builder("gfx/packs/menu/menu_shade.png").withAlpha(App::menuTransparency).withoutColorKey().create();
 
@@ -388,6 +394,7 @@ void CResourceManager::loadMenuGraphics()
     menu_slider_bar = builder("gfx/packs/menu/menu_slider_bar.png").create();
     menu_plain_field = builder("gfx/packs/menu/menu_plain_field.png").create();
     menu_player_select = builder("gfx/packs/menu/menu_player_select.png").create();
+    menu_player_select_notext = loadOptional("gfx/packs/menu/menu_player_select_notext.png");
     menu_dialog = builder("gfx/packs/menu/menu_dialog.png").create();
     menu_map_filter = builder("gfx/packs/menu/menu_map_filter.png").create();
     menu_match_select = builder("gfx/packs/menu/menu_match_select.png").create();
@@ -408,6 +415,7 @@ void CResourceManager::loadMenuGraphics()
     const std::string background8pPath = convertPath("gfx/packs/menu/player_select_background_8p.png", graphicspack);
     spr_player_select_background_8p = fs::exists(background8pPath) ? ImageLoader(background8pPath).create() : gfxSprite();
     spr_player_select_ready = builder("gfx/packs/menu/player_select_ready.png").create();
+    spr_player_select_ready_notext = loadOptional("gfx/packs/menu/player_select_ready_notext.png");
     //spr_ipfield = builder("gfx/packs/menu/menu_ipfield.png").create();
     spr_selectfield = builder("gfx/packs/menu/menu_selectfield.png").create();
     spr_selectfielddisabled = builder("gfx/packs/menu/menu_selectfield_disabled.png").create();
@@ -489,6 +497,34 @@ std::vector<std::string> CResourceManager::listFontFiles()
     return files;
 }
 
+namespace {
+constexpr int ICON_WIDTH = 34;
+constexpr int ICON_LABEL_WIDTH = ICON_WIDTH;
+constexpr int ICON_LABEL_CENTER_Y = 15;  // where the labels are in the icon images with text
+
+std::string_view iconLabelText(CResourceManager::IconLabel label)
+{
+    switch (label) {
+        case CResourceManager::IconLabel::Player: return l10n::translateKey("[icon] Player", "Player");
+        case CResourceManager::IconLabel::Cpu: return l10n::translateKey("[icon] CPU", "CPU");
+        case CResourceManager::IconLabel::Ready: return l10n::translateKey("[icon] Ready", "Ready");
+    }
+    return {};
+}
+}  // namespace
+
+bool CResourceManager::drawsIconLabels(const gfxSprite& notextIcons) const
+{
+    return m_hasIconFont && static_cast<bool>(notextIcons);
+}
+
+void CResourceManager::drawIconLabel(int x, int y, IconLabel label) const
+{
+    const std::string_view text = iconLabelText(label);
+    const int textY = y + ICON_LABEL_CENTER_Y - menu_font_icon.getHeight() / 2;
+    menu_font_icon.draw(x + (ICON_WIDTH - menu_font_icon.getWidth(text)) / 2, textY, text);
+}
+
 void CResourceManager::loadFonts()
 {
     const std::string menupack = menugraphicspacklist->currentPath().string();
@@ -511,6 +547,13 @@ void CResourceManager::loadFonts()
             menu_font_large = gfxFont(ttf, menuLarge);
             game_font_small = gfxFont(ttf, gameSmall);
             game_font_large = gfxFont(ttf, gameLarge);
+
+            // Small enough for the labels to fit on the player icons, in the current language
+            std::vector<std::string> labels;
+            for (IconLabel label : {IconLabel::Player, IconLabel::Cpu, IconLabel::Ready})
+                labels.emplace_back(iconLabelText(label));
+            menu_font_icon = gfxFont(ttf, menuSmall, labels, ICON_LABEL_WIDTH);
+            m_hasIconFont = true;
             return;
         } catch (const std::string& err) {
             std::cerr << "warning: " << err << ", using the pixel fonts" << std::endl;
@@ -518,6 +561,8 @@ void CResourceManager::loadFonts()
         }
     }
 
+    m_hasIconFont = false;
+    menu_font_icon = gfxFont();
     menu_font_small = gfxFont(menuSmall);
     menu_font_large = gfxFont(menuLarge);
     game_font_small = gfxFont(gameSmall);

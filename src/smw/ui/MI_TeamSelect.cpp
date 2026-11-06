@@ -159,8 +159,13 @@ void MI_TeamSelect::DrawReadyPanel(short iPlayer, short x, short y, short w) con
     rm->menu_font_small.drawChopRight(nameX, y + 36 - rm->menu_font_small.getHeight(), nameEndX - nameX,
         game_values.randomskin[iPlayer] ? "Random" : skinlist->at(game_values.skinids[iPlayer]).name.c_str());
 
-    rm->spr_player_select_ready.draw(x + (w - 34) / 2, y + 40,
-        {128, (!fReady[iPlayer] ? 0 : (game_values.playercontrol[iPlayer] == 1 ? 32 : 64)), 34, 32});
+    // With the smooth font, "Ready" is drawn in it, on icons without text
+    const bool fLabels = rm->drawsIconLabels(rm->spr_player_select_ready_notext);
+    const gfxSprite& icons = fLabels ? rm->spr_player_select_ready_notext : rm->spr_player_select_ready;
+    const short iconX = x + (w - 34) / 2;
+    icons.draw(iconX, y + 40, {128, (!fReady[iPlayer] ? 0 : (game_values.playercontrol[iPlayer] == 1 ? 32 : 64)), 34, 32});
+    if (fLabels && fReady[iPlayer])
+        rm->drawIconLabel(iconX, y + 40, CResourceManager::IconLabel::Ready);
 }
 
 void MI_TeamSelect::Draw()

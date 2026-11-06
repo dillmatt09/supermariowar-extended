@@ -163,6 +163,13 @@ bool loadFromString(const std::string& tomlText)
     }
 }
 
+std::string_view translateKey(std::string_view key, std::string_view fallback)
+{
+    if (const std::string* translation = findExact(key))
+        return *translation;
+    return fallback;
+}
+
 std::string_view translate(std::string_view text)
 {
     if (g_strings.empty() || text.empty())

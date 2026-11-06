@@ -117,7 +117,14 @@ void MI_PlayerSelect::Draw()
 
     miModifyImage->Draw();
 
+    // With the smooth font, the labels of the icons are drawn in it, on icons without text
+    const bool fLabels = rm->drawsIconLabels(rm->menu_player_select_notext);
+    const gfxSprite& icons = fLabels ? rm->menu_player_select_notext : *spr;
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
-        spr->draw(m_pos.x + iPlayerPosition[iPlayer], m_pos.y + 16, {game_values.playercontrol[iPlayer] * 34 + 32, 206, 34, 32});
+        const short x = m_pos.x + iPlayerPosition[iPlayer];
+        const short iControl = game_values.playercontrol[iPlayer];
+        icons.draw(x, m_pos.y + 16, {iControl * 34 + 32, 206, 34, 32});
+        if (fLabels && iControl > 0)
+            rm->drawIconLabel(x, m_pos.y + 16, iControl == 1 ? CResourceManager::IconLabel::Player : CResourceManager::IconLabel::Cpu);
     }
 }

@@ -25,6 +25,13 @@ public:
 	void loadAllGraphics();
 	void loadMenuGraphics();
 	void loadGameGraphics();
+	/// The player icon labels (Player, CPU, Ready) are drawn with the smooth font on icons without text,
+	/// when the graphics pack has them; otherwise the icons with the text in them are used
+	bool drawsIconLabels(const gfxSprite& notextIcons) const;
+	enum class IconLabel { Player, Cpu, Ready };
+	/// Draws a player icon label centered on an icon (34x32) at x, y
+	void drawIconLabel(int x, int y, IconLabel label) const;
+
 	/// Loads the menu and game fonts, using the font selected in the options
 	void loadFonts();
 	/// The TTF/OTF files in the fonts directory of the data
@@ -35,6 +42,8 @@ public:
 	bool LoadGameSounds();
 
 private:
+	bool m_hasIconFont = false;  // menu_font_icon was made from the smooth font
+
 	void loadAllSprites();
 
 public:
@@ -66,6 +75,7 @@ public:
 	gfxSprite		menu_backdrop;
 
 	gfxFont			menu_font_small;
+	gfxFont			menu_font_icon;  // labels on the player icons, only with the smooth font
 	gfxFont			menu_font_large;
 	gfxFont			game_font_small;
 	gfxFont			game_font_large;
@@ -75,6 +85,7 @@ public:
 	gfxSprite		menu_version;
 	gfxSprite		menu_plain_field;
 	gfxSprite		menu_player_select;
+	gfxSprite		menu_player_select_notext;  // optional, the player icons without labels
 	gfxSprite		menu_map_filter;
 	gfxSprite		menu_match_select;
 	gfxSprite		menu_dialog;
@@ -94,6 +105,7 @@ public:
 	gfxSprite		spr_player_select_background;
 	gfxSprite		spr_player_select_background_8p; // optional, empty if the graphics pack doesn't have it
 	gfxSprite		spr_player_select_ready;
+	gfxSprite		spr_player_select_ready_notext;  // optional, the player icons without labels
 	//gfxSprite		spr_ipfield;
 	gfxSprite		spr_selectfield;
 	gfxSprite		spr_selectfielddisabled;

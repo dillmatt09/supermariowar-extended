@@ -40,6 +40,10 @@ const std::string& language();
 /// The translation of a text, or the text itself if there is none
 std::string_view translate(std::string_view text);
 
+/// The translation of a key that is not an English text itself (eg. "[icon] Player"),
+/// or the fallback text if there is none
+std::string_view translateKey(std::string_view key, std::string_view fallback);
+
 /// Loads translations from the contents of a locale file (for tests)
 bool loadFromString(const std::string& tomlText);
 

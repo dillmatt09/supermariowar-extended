@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <limits>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -17,8 +18,10 @@ public:
     explicit gfxFont() = default;
     /// Loads a bitmap font image
     explicit gfxFont(const std::filesystem::path& path);
-    /// Renders a TTF/OTF font with the size and colors of a bitmap font image
-    gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath);
+    /// Renders a TTF/OTF font with the size and colors of a bitmap font image.
+    /// If fitWidth is set, the font is made small enough for every one of fitTexts to fit in that width.
+    gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath,
+        const std::vector<std::string>& fitTexts = {}, int fitWidth = 0);
 
     void draw(int x, int y, std::string_view text,
         int dst_min_x = std::numeric_limits<int>::min(),
@@ -58,6 +61,7 @@ private:
     };
     std::vector<GlyphArea> m_glyph_areas;  // printable ASCII characters, starting from '!'
     std::unordered_map<char32_t, GlyphArea> m_extra_glyphs;  // other characters (eg. accented letters)
+    int m_letter_spacing = 0;  // added after every character
     int m_space_width = 0;
 
     const GlyphArea* findGlyph(char32_t codepoint) const;
