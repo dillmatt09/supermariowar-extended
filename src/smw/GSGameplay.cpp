@@ -4,6 +4,7 @@
 #include "FileList.h"
 #include "GameMode.h"
 #include "GameValues.h"
+#include "Localization.h"
 #include "GSMenu.h"
 #include "net.h"
 #include "map.h"
@@ -1109,10 +1110,12 @@ void GameplayState::drawScreenFade()
             //if (game_values.matchtype == MatchType::QuickGame)
             if (game_values.startmodedisplay && game_values.singleplayermode == -1) {
                 char szMode[128];
+                const std::string modeName(l10n::translate(game_values.gamemode->GetModeName()));
+                const std::string goalName(l10n::translate(game_values.gamemode->GetGoalName()));
                 if (game_values.gamemode->goal < 0)
-                    sprintf(szMode, "%s  %s: X", game_values.gamemode->GetModeName().c_str(), game_values.gamemode->GetGoalName().c_str());
+                    sprintf(szMode, "%s  %s: X", modeName.c_str(), goalName.c_str());
                 else
-                    sprintf(szMode, "%s  %s: %d", game_values.gamemode->GetModeName().c_str(), game_values.gamemode->GetGoalName().c_str(), game_values.gamemode->goal);
+                    sprintf(szMode, "%s  %s: %d", modeName.c_str(), goalName.c_str(), game_values.gamemode->goal);
 
                 short iMode = GetModeIconIndexFromMode(game_values.gamemode->gamemode);
 

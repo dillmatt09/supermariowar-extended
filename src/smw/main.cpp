@@ -18,6 +18,7 @@
 #include "FileList.h"
 #include "GameMode.h"
 #include "GameValues.h"
+#include "Localization.h"
 #include "map.h"
 #include "MapList.h"
 #include "net.h"
@@ -380,6 +381,7 @@ void main_game()
     create_gamemodes();
 
     game_values.ReadConfig();
+    l10n::setLanguage(game_values.language);
 
     //Assign the powerup weights to the selected preset
     for (short iPowerup = 0; iPowerup < NUM_POWERUPS; iPowerup++) {

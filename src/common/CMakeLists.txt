@@ -58,6 +58,8 @@ add_library(CommonFiles STATIC
     RandomNumberGenerator.cpp
     RandomNumberGenerator.h
     ResourceManager.cpp
+    Localization.cpp
+    Localization.h
     ResourceManager.h
     ScoreboardLayout.h
     sfx.cpp

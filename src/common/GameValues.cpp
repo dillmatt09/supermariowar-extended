@@ -151,6 +151,8 @@ void CGameValues::init()
     frameadvance    = false;
     autokill      = false;
     framelimiter    = WAITTIME;
+    language        = "en";
+    smoothfont      = false;
     sound       = true;
     music       = true;
     appstate     = AppState::Splash;

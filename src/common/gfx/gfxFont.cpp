@@ -1,5 +1,7 @@
 #include "gfxFont.h"
 
+#include "Localization.h"
+
 #include "gfx.h"
 
 #include <SDL3_image/SDL_image.h>
@@ -65,7 +67,7 @@ char asciiFallback(char32_t cp)
         add(U"ÙÚÛÜ", 'U'); add(U"ùúûü", 'u');
         add(U"ÝŸ", 'Y'); add(U"ýÿ", 'y');
         add(U"ß", 's');
-        add(U"¿", '?'); add(U"¡", '!');
+        // ¡ and ¿ are left out: the pixel fonts have no inverted marks, and an upright one reads wrong
         add(U"«»“”„", '"'); add(U"‘’‚", '\'');
         add(U"–—", '-'); add(U"…", '.');
         add(U"\u00A0\u202F", ' ');
@@ -264,6 +266,7 @@ const gfxFont::GlyphArea* gfxFont::findGlyph(char32_t cp) const
 
 void gfxFont::draw(int x, int y, std::string_view text, int dst_min_x, int dst_max_x) const
 {
+    text = l10n::translate(text);
     size_t pos = 0;
     while (pos < text.size()) {
         if (dst_max_x < x)
@@ -309,6 +312,7 @@ int gfxFont::getHeight() const
 
 int gfxFont::getWidth(std::string_view text) const
 {
+    text = l10n::translate(text);
     int width = 0;
     size_t pos = 0;
     while (pos < text.size()) {

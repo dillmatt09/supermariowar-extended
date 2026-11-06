@@ -498,12 +498,15 @@ void CResourceManager::loadFonts()
     const std::string gameSmall = convertPath("gfx/packs/fonts/font_small.png", gamepack);
     const std::string gameLarge = convertPath("gfx/packs/fonts/font_large.png", gamepack);
 
-    if (!game_values.font.empty()) {
+    if (game_values.smoothfont) {
         // Use the TTF/OTF font, in the size and colors of the graphics pack's fonts
+        const std::vector<std::string> files = listFontFiles();
+        if (std::find(files.begin(), files.end(), game_values.font) == files.end())
+            game_values.font = files.empty() ? std::string() : files.front();
         const std::string ttf = convertPath("fonts/" + game_values.font);
         try {
-            if (!fs::exists(ttf))
-                throw std::format("The font {} doesn't exist", ttf);
+            if (game_values.font.empty())
+                throw std::string("No TTF/OTF fonts were found in the fonts directory");
             menu_font_small = gfxFont(ttf, menuSmall);
             menu_font_large = gfxFont(ttf, menuLarge);
             game_font_small = gfxFont(ttf, gameSmall);
@@ -511,7 +514,7 @@ void CResourceManager::loadFonts()
             return;
         } catch (const std::string& err) {
             std::cerr << "warning: " << err << ", using the pixel fonts" << std::endl;
-            game_values.font.clear();
+            game_values.smoothfont = false;
         }
     }
 

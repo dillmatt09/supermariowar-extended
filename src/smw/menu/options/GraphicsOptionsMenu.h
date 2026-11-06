@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Localization.h"
 #include "uimenu.h"
 
 #include <string>
@@ -22,6 +23,10 @@ public:
 
     /// The font file selected in the menu, or empty for the pixel fonts
     std::string selectedFont() const;
+    /// Shows the font field only for the smooth font style
+    void refreshFontFields();
+    /// The code of the language selected in the menu
+    std::string selectedLanguage() const;
 
 private:
     MI_SelectField<bool>* miTopLayerField;
@@ -31,8 +36,11 @@ private:
     MI_PacksField* miMenuGraphicsPackField;
     MI_PacksField* miWorldGraphicsPackField;
     MI_PacksField* miGameGraphicsPackField;
+    MI_SelectField<bool>* miFontStyleField;
     MI_SelectField<short>* miFontField;
     std::vector<std::string> mFontFiles;
+    MI_SelectField<short>* miLanguageField;
+    std::vector<l10n::LocaleInfo> mLanguages;
     MI_Button* miGraphicsOptionsMenuBackButton;
 
     MI_Image* miGraphicsOptionsMenuLeftHeaderBar;

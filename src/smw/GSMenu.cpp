@@ -3,6 +3,7 @@
 #include "FileList.h"
 #include "Game.h"
 #include "GameValues.h"
+#include "Localization.h"
 #include "GSGameplay.h"
 #include "GameplayStyles.h"
 #include "net.h"
@@ -973,6 +974,10 @@ void MenuState::update()
         } else if (MENU_CODE_FONT_CHANGED == code) {
             game_values.font = mGraphicsOptionsMenu->selectedFont();
             rm->loadFonts();
+            mGraphicsOptionsMenu->refreshFontFields();
+        } else if (MENU_CODE_LANGUAGE_CHANGED == code) {
+            game_values.language = mGraphicsOptionsMenu->selectedLanguage();
+            l10n::setLanguage(game_values.language);
         } else if (MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED == code) {
             rm->loadWorldGraphics();
         } else if (MENU_CODE_GAME_GRAPHICS_PACK_CHANGED == code) {
