@@ -238,6 +238,15 @@ bool MI_TeamSelect::AreHumansReady() const
     return true;
 }
 
+bool MI_TeamSelect::HasHumans() const
+{
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
+        if (IsHuman(iPlayer))
+            return true;
+    }
+    return false;
+}
+
 short MI_TeamSelect::GetCpuChooser(short iCpu) const
 {
     short iHumans[MAX_PLAYERS];
@@ -250,8 +259,9 @@ short MI_TeamSelect::GetCpuChooser(short iCpu) const
             iCpuIndex++;
     }
 
+    // Without human players the main controller chooses for every CPU
     if (iHumanCount == 0)
-        return -1;
+        return MAIN_CONTROLLER;
 
     if (game_values.cpuselectstyle == CpuSelectStyle::AllPlayers)
         return iHumans[iCpuIndex % iHumanCount];  // take turns: 1st CPU to the 1st human, 2nd CPU to the 2nd, ...
@@ -389,10 +399,14 @@ MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
         COutputControl * playerKeys = &game_values.playerInput.outputControls[iPlayer];
         const bool fCanLeave = DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0;
 
-        // A human player first chooses for themselves, then for the CPUs they are responsible for
+        // A human player first chooses for themselves, then for the CPUs they are responsible for.
+        // Without human players, the main controller chooses for the CPUs.
+        const bool fChoosesForCpus = IsHuman(iPlayer) || (iPlayer == MAIN_CONTROLLER && !HasHumans());
         short iTarget = -1;
-        if (IsHuman(iPlayer))
-            iTarget = fReady[iPlayer] ? GetCpuBeingChosen(iPlayer) : iPlayer;
+        if (IsHuman(iPlayer) && !fReady[iPlayer])
+            iTarget = iPlayer;
+        else if (fChoosesForCpus)
+            iTarget = GetCpuBeingChosen(iPlayer);
 
         if (iTarget >= 0)
             HandleSelection(iTarget, playerKeys);
@@ -411,9 +425,10 @@ MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
         }
 
         if (playerKeys->menu_cancel.fPressed) {
-            const short iLastCpu = IsHuman(iPlayer) ? GetLastChosenCpu(iPlayer) : -1;
+            const short iLastCpu = fChoosesForCpus ? GetLastChosenCpu(iPlayer) : -1;
+            const bool fChoosingCpus = !IsHuman(iPlayer) || fReady[iPlayer];
 
-            if (IsHuman(iPlayer) && fReady[iPlayer] && iLastCpu >= 0 && AreHumansReady()) {
+            if (fChoosingCpus && iLastCpu >= 0 && AreHumansReady()) {
                 // Go back to the previous CPU
                 fReady[iLastCpu] = false;
                 fAllReady = false;
@@ -579,16 +594,12 @@ void MI_TeamSelect::Reset()
 
     fAllReady = true;
 
-    bool fHasHumans = false;
-    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++)
-        fHasHumans |= IsHuman(iPlayer);
-
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
         iFastScroll[iPlayer] = 0;
         iFastScrollTimer[iPlayer] = 0;
 
-        // Humans choose for themselves, and then for the CPUs. Without human players the CPUs are ready immediately.
-        if (IsHuman(iPlayer) || (IsCpu(iPlayer) && fHasHumans)) {
+        // Humans choose for themselves, and then for the CPUs (without humans the main controller chooses for the CPUs)
+        if (IsHuman(iPlayer) || IsCpu(iPlayer)) {
             fReady[iPlayer] = false;
             fAllReady = false;
         } else {

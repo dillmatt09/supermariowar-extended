@@ -39,7 +39,10 @@ class MI_TeamSelect : public UI_Control
 		bool IsHuman(short iPlayer) const;
 		bool IsCpu(short iPlayer) const;
 		bool AreHumansReady() const;
-		/// The human player who chooses for this CPU (or -1 if there are no humans)
+		bool HasHumans() const;
+		/// The controller that chooses for the CPUs when there are no human players
+		static constexpr short MAIN_CONTROLLER = 0;
+		/// The human player who chooses for this CPU (the main controller if there are no humans)
 		short GetCpuChooser(short iCpu) const;
 		/// The CPU the human player is currently choosing for, or -1
 		short GetCpuBeingChosen(short iHuman) const;
