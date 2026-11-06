@@ -97,5 +97,6 @@ target_link_libraries(CommonFiles
     SDL3::SDL3
     SDL3_image::SDL3_image
     SDL3_mixer::SDL3_mixer
+    SDL3_ttf::SDL3_ttf
     toml11::toml11
 )

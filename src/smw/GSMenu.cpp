@@ -970,6 +970,9 @@ void MenuState::update()
             rm->menu_shade.setalpha(App::menuTransparency);
             rm->menu_shade.draw(0, 0);
             blitdest = screen;
+        } else if (MENU_CODE_FONT_CHANGED == code) {
+            game_values.font = mGraphicsOptionsMenu->selectedFont();
+            rm->loadFonts();
         } else if (MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED == code) {
             rm->loadWorldGraphics();
         } else if (MENU_CODE_GAME_GRAPHICS_PACK_CHANGED == code) {

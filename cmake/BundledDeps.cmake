@@ -85,6 +85,23 @@ smw_declare_gitrepo(
 )
 
 
+# SDL_ttf (for using TTF/OTF fonts)
+set(SDLTTF_VENDORED ON CACHE BOOL "")
+set(SDLTTF_HARFBUZZ OFF CACHE BOOL "")
+set(SDLTTF_PLUTOSVG OFF CACHE BOOL "")
+set(SDLTTF_SAMPLES OFF CACHE BOOL "")
+set(SDLTTF_INSTALL OFF CACHE BOOL "")
+FetchContent_Declare(
+    SDL3_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG release-3.2.2
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+    GIT_SUBMODULES "external/freetype"
+    SYSTEM
+    FIND_PACKAGE_ARGS NAMES SDL3_ttf
+)
+
 # toml11
 FetchContent_Declare(
     toml11
@@ -115,7 +132,7 @@ smw_declare_gitrepo(
 )
 
 
-FetchContent_MakeAvailable(SDL3 SDL3_image SDL3_mixer toml11)
+FetchContent_MakeAvailable(SDL3 SDL3_image SDL3_mixer SDL3_ttf toml11)
 if(NOT NO_NETWORK)
     FetchContent_MakeAvailable(enet)
 endif()

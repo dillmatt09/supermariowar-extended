@@ -2,6 +2,9 @@
 
 #include "uimenu.h"
 
+#include <string>
+#include <vector>
+
 class MI_Button;
 class MI_Image;
 class MI_PacksField;
@@ -17,6 +20,9 @@ class UI_GraphicsOptionsMenu : public UI_Menu {
 public:
     UI_GraphicsOptionsMenu();
 
+    /// The font file selected in the menu, or empty for the pixel fonts
+    std::string selectedFont() const;
+
 private:
     MI_SelectField<bool>* miTopLayerField;
     MI_SelectField<short>* miFrameLimiterField;
@@ -25,6 +31,8 @@ private:
     MI_PacksField* miMenuGraphicsPackField;
     MI_PacksField* miWorldGraphicsPackField;
     MI_PacksField* miGameGraphicsPackField;
+    MI_SelectField<short>* miFontField;
+    std::vector<std::string> mFontFiles;
     MI_Button* miGraphicsOptionsMenuBackButton;
 
     MI_Image* miGraphicsOptionsMenuLeftHeaderBar;

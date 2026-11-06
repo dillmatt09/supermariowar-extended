@@ -8,6 +8,9 @@
 #include "ui/MI_PacksField.h"
 #include "ui/MI_SelectField.h"
 #include "ui/MI_Text.h"
+#include "path.h"
+
+#include <string>
 
 extern CResourceManager* rm;
 extern CGameValues game_values;
@@ -68,6 +71,20 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu()
     miWorldGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 280, "World Graphics", 500, 220, worldgraphicspacklist, MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED);
     miGameGraphicsPackField = new MI_PacksField(&rm->spr_selectfield, 70, 320, "Game Graphics", 500, 220, gamegraphicspacklist, MENU_CODE_GAME_GRAPHICS_PACK_CHANGED);
 
+    // Pixel: the fonts of the graphics packs; otherwise the TTF/OTF fonts found in the fonts directory
+    mFontFiles = CResourceManager::listFontFiles();
+    miFontField = new MI_SelectField<short>(&rm->spr_selectfield, 70, 360, "Font Style", 500, 220);
+    miFontField->add("Pixel", -1);
+    short iSelectedFont = -1;
+    for (size_t i = 0; i < mFontFiles.size(); i++) {
+        const std::string name = gfxFont::fontFamilyName(convertPath("fonts/" + mFontFiles[i]));
+        miFontField->add(name.empty() ? mFontFiles[i] : name, static_cast<short>(i));
+        if (mFontFiles[i] == game_values.font)
+            iSelectedFont = static_cast<short>(i);
+    }
+    miFontField->setCurrentValue(iSelectedFont);
+    miFontField->setItemChangedCode(MENU_CODE_FONT_CHANGED);
+
     miGraphicsOptionsMenuBackButton = new MI_Button(&rm->spr_selectfield, 544, 432, "Back", 80, TextAlign::CENTER);
     miGraphicsOptionsMenuBackButton->SetCode(MENU_CODE_BACK_TO_OPTIONS_MENU);
 
@@ -82,8 +99,9 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu()
     AddControl(miMenuGraphicsPackField, miFullscreenField, miWorldGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
 
     AddControl(miWorldGraphicsPackField, miMenuGraphicsPackField, miGameGraphicsPackField, NULL, miGraphicsOptionsMenuBackButton);
-    AddControl(miGameGraphicsPackField, miWorldGraphicsPackField, miGraphicsOptionsMenuBackButton, NULL, miGraphicsOptionsMenuBackButton);
-    AddControl(miGraphicsOptionsMenuBackButton, miGameGraphicsPackField, miTopLayerField, miGameGraphicsPackField, NULL);
+    AddControl(miGameGraphicsPackField, miWorldGraphicsPackField, miFontField, NULL, miGraphicsOptionsMenuBackButton);
+    AddControl(miFontField, miGameGraphicsPackField, miGraphicsOptionsMenuBackButton, NULL, miGraphicsOptionsMenuBackButton);
+    AddControl(miGraphicsOptionsMenuBackButton, miFontField, miTopLayerField, miFontField, NULL);
 
     AddNonControl(miGraphicsOptionsMenuLeftHeaderBar);
     AddNonControl(miGraphicsOptionsMenuRightHeaderBar);
@@ -92,3 +110,9 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu()
     setInitialFocus(miTopLayerField);
     SetCancelCode(MENU_CODE_BACK_TO_OPTIONS_MENU);
 };
+
+std::string UI_GraphicsOptionsMenu::selectedFont() const
+{
+    const short iFont = miFontField->currentValue();
+    return iFont >= 0 && iFont < static_cast<short>(mFontFiles.size()) ? mFontFiles[iFont] : std::string();
+}

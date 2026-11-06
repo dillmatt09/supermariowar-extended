@@ -114,6 +114,7 @@ public:
     short		suicidetime;
     bool		deadteamnotice;
     short		framelimiter;
+    std::string font;  // a TTF/OTF file in the fonts directory of the data, or empty for the fonts of the graphics pack
     short		hiddenblockrespawn;
     CInputPlayerControl inputConfiguration[MAX_PLAYERS][2]; //[NumPlayers][Keyboard/Joystick]
     short		itemrespawntime;

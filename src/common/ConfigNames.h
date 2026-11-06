@@ -465,6 +465,7 @@ template<> struct NamedLayout<CGameConfig> {
             field("top_layer", &CGameConfig::toplayer),
             field("frame_limiter", &CGameConfig::framelimiter),
             field("fullscreen", &CGameConfig::fullscreen),
+            field("font", &CGameConfig::font),
             field("menu_pack", &Bridge::menugraphicspack),
             field("world_pack", &Bridge::worldgraphicspack),
             field("game_pack", &Bridge::gamegraphicspack)),

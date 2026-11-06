@@ -8,6 +8,8 @@
 
 #include <array>
 #include <filesystem>
+#include <string>
+#include <vector>
 
 using SpriteStrip = std::array<gfxSprite, PGFX_LAST>;
 
@@ -23,6 +25,10 @@ public:
 	void loadAllGraphics();
 	void loadMenuGraphics();
 	void loadGameGraphics();
+	/// Loads the menu and game fonts, using the font selected in the options
+	void loadFonts();
+	/// The TTF/OTF files in the fonts directory of the data
+	static std::vector<std::string> listFontFiles();
 	void loadWorldGraphics();
 	void loadStartGraphics();
 

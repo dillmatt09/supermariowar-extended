@@ -8,6 +8,9 @@
 #include "ScoreboardLayout.h"
 #include "gfx/Color.h"
 
+#include <algorithm>
+#include <cctype>
+#include <format>
 #include <iostream>
 
 namespace fs = std::filesystem;
@@ -467,10 +470,55 @@ void CResourceManager::loadGameGraphics()
 
     g_tilesetmanager = new CTilesetManager(graphicspack);
 
-    game_font_small = gfxFont(convertPath("gfx/packs/fonts/font_small.png", graphicspack));
-    game_font_large = gfxFont(convertPath("gfx/packs/fonts/font_large.png", graphicspack));
+    loadFonts();
 
     loadAllSprites();
+}
+
+std::vector<std::string> CResourceManager::listFontFiles()
+{
+    std::vector<std::string> files;
+    std::error_code err;
+    for (const auto& entry : fs::directory_iterator(convertPath("fonts/"), err)) {
+        std::string ext = entry.path().extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (entry.is_regular_file() && (ext == ".ttf" || ext == ".otf" || ext == ".ttc"))
+            files.push_back(entry.path().filename().string());
+    }
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+void CResourceManager::loadFonts()
+{
+    const std::string menupack = menugraphicspacklist->currentPath().string();
+    const std::string gamepack = gamegraphicspacklist->currentPath().string();
+    const std::string menuSmall = convertPath("gfx/packs/menu/menu_font_small.png", menupack);
+    const std::string menuLarge = convertPath("gfx/packs/menu/menu_font_large.png", menupack);
+    const std::string gameSmall = convertPath("gfx/packs/fonts/font_small.png", gamepack);
+    const std::string gameLarge = convertPath("gfx/packs/fonts/font_large.png", gamepack);
+
+    if (!game_values.font.empty()) {
+        // Use the TTF/OTF font, in the size and colors of the graphics pack's fonts
+        const std::string ttf = convertPath("fonts/" + game_values.font);
+        try {
+            if (!fs::exists(ttf))
+                throw std::format("The font {} doesn't exist", ttf);
+            menu_font_small = gfxFont(ttf, menuSmall);
+            menu_font_large = gfxFont(ttf, menuLarge);
+            game_font_small = gfxFont(ttf, gameSmall);
+            game_font_large = gfxFont(ttf, gameLarge);
+            return;
+        } catch (const std::string& err) {
+            std::cerr << "warning: " << err << ", using the pixel fonts" << std::endl;
+            game_values.font.clear();
+        }
+    }
+
+    menu_font_small = gfxFont(menuSmall);
+    menu_font_large = gfxFont(menuLarge);
+    game_font_small = gfxFont(gameSmall);
+    game_font_large = gfxFont(gameLarge);
 }
 
 void CResourceManager::loadStartGraphics()
@@ -480,8 +528,7 @@ void CResourceManager::loadStartGraphics()
         return ImageLoader(convertPath(relpath, graphicspack));
     };
 
-    menu_font_small = gfxFont(convertPath("gfx/packs/menu/menu_font_small.png", graphicspack));
-    menu_font_large = gfxFont(convertPath("gfx/packs/menu/menu_font_large.png", graphicspack));
+    loadFonts();
 
     //load basic stuff
     menu_backdrop = builder("gfx/packs/menu/menu_background.png").withoutColorKey().create();
