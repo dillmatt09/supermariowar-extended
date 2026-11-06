@@ -534,25 +534,34 @@ void CResourceManager::loadFonts()
     const std::string gameSmall = convertPath("gfx/packs/fonts/font_small.png", gamepack);
     const std::string gameLarge = convertPath("gfx/packs/fonts/font_large.png", gamepack);
 
-    if (game_values.smoothfont) {
+    // Some languages (eg. Russian, Japanese) can only be shown with a TTF/OTF font
+    if (game_values.smoothfont || l10n::needsSmoothFont()) {
         // Use the TTF/OTF font, in the size and colors of the graphics pack's fonts
         const std::vector<std::string> files = listFontFiles();
         if (std::find(files.begin(), files.end(), game_values.font) == files.end())
             game_values.font = files.empty() ? std::string() : files.front();
         const std::string ttf = convertPath("fonts/" + game_values.font);
+
+        // The characters the font doesn't have are taken from the other fonts
+        gfxFont::TtfOptions options;
+        for (const std::string& file : files) {
+            if (file != game_values.font)
+                options.fallbacks.emplace_back(convertPath("fonts/" + file));
+        }
+        options.characters = l10n::usedCharacters();
         try {
             if (game_values.font.empty())
                 throw std::string("No TTF/OTF fonts were found in the fonts directory");
-            menu_font_small = gfxFont(ttf, menuSmall);
-            menu_font_large = gfxFont(ttf, menuLarge);
-            game_font_small = gfxFont(ttf, gameSmall);
-            game_font_large = gfxFont(ttf, gameLarge);
+            menu_font_small = gfxFont(ttf, menuSmall, options);
+            menu_font_large = gfxFont(ttf, menuLarge, options);
+            game_font_small = gfxFont(ttf, gameSmall, options);
+            game_font_large = gfxFont(ttf, gameLarge, options);
 
             // Small enough for the labels to fit on the player icons, in the current language
-            std::vector<std::string> labels;
+            options.fitWidth = ICON_LABEL_WIDTH;
             for (IconLabel label : {IconLabel::Player, IconLabel::Cpu, IconLabel::Ready})
-                labels.emplace_back(iconLabelText(label));
-            menu_font_icon = gfxFont(ttf, menuSmall, labels, ICON_LABEL_WIDTH);
+                options.fitTexts.emplace_back(iconLabelText(label));
+            menu_font_icon = gfxFont(ttf, menuSmall, options);
             m_hasIconFont = true;
             return;
         } catch (const std::string& err) {

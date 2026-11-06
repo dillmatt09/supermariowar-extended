@@ -96,22 +96,18 @@ UI_GraphicsOptionsMenu::UI_GraphicsOptionsMenu()
         miFontField->add("(none)", -1);
     miFontField->setCurrentValue(mFontFiles.empty() ? -1 : iSelectedFont);
     miFontField->setItemChangedCode(MENU_CODE_FONT_CHANGED);
-    refreshFontFields();
 
-    // English is built in; the other languages are the locales found in the locales directory
+    // English is built in; the other languages are the locales found in the locales directory.
+    // The languages the pixel fonts can't show are only offered when there's a TTF/OTF font.
     mLanguages = l10n::listLocales();
     mLanguages.erase(std::remove_if(mLanguages.begin(), mLanguages.end(),
-        [](const l10n::LocaleInfo& locale) { return locale.code == l10n::DEFAULT_LANGUAGE; }), mLanguages.end());
-    mLanguages.insert(mLanguages.begin(), l10n::LocaleInfo{std::string(l10n::DEFAULT_LANGUAGE), "English"});
+        [this](const l10n::LocaleInfo& locale) {
+            return locale.code == l10n::DEFAULT_LANGUAGE || (!locale.pixelFont && mFontFiles.empty());
+        }), mLanguages.end());
+    mLanguages.insert(mLanguages.begin(), l10n::LocaleInfo{std::string(l10n::DEFAULT_LANGUAGE), "English", "English", true});
     miLanguageField = new MI_SelectField<short>(&rm->spr_selectfield, 70, 320, "Language", 500, 220);
-    short iSelectedLanguage = 0;
-    for (size_t i = 0; i < mLanguages.size(); i++) {
-        miLanguageField->add(mLanguages[i].name, static_cast<short>(i));
-        if (mLanguages[i].code == l10n::language())
-            iSelectedLanguage = static_cast<short>(i);
-    }
-    miLanguageField->setCurrentValue(iSelectedLanguage);
     miLanguageField->setItemChangedCode(MENU_CODE_LANGUAGE_CHANGED);
+    refreshFontFields();
 
     miGraphicsOptionsMenuBackButton = new MI_Button(&rm->spr_selectfield, 544, 432, "Back", 80, TextAlign::CENTER);
     miGraphicsOptionsMenuBackButton->SetCode(MENU_CODE_BACK_TO_OPTIONS_MENU);
@@ -149,8 +145,25 @@ std::string UI_GraphicsOptionsMenu::selectedFont() const
 
 void UI_GraphicsOptionsMenu::refreshFontFields()
 {
+    // The languages that need the smooth font can't be shown with the pixel fonts
+    const bool fNeedsSmooth = l10n::needsSmoothFont() && !mFontFiles.empty();
+    miFontStyleField->hideItem(false, fNeedsSmooth);
+    miFontStyleField->setCurrentValue(game_values.smoothfont && !mFontFiles.empty());
+
     // The font can only be picked when the smooth font style is used
     miFontField->setVisible(game_values.smoothfont && !mFontFiles.empty());
+
+    // The names of the languages in their own script need the smooth font; otherwise they're in English
+    const bool fSmooth = game_values.smoothfont && !mFontFiles.empty();
+    miLanguageField->clear();
+    short iSelectedLanguage = 0;
+    for (size_t i = 0; i < mLanguages.size(); i++) {
+        const l10n::LocaleInfo& locale = mLanguages[i];
+        miLanguageField->add(locale.pixelFont || fSmooth ? locale.name : locale.englishName, static_cast<short>(i));
+        if (locale.code == l10n::language())
+            iSelectedLanguage = static_cast<short>(i);
+    }
+    miLanguageField->setCurrentValue(iSelectedLanguage);
 }
 
 std::string UI_GraphicsOptionsMenu::selectedLanguage() const

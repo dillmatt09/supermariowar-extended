@@ -18,10 +18,18 @@ public:
     explicit gfxFont() = default;
     /// Loads a bitmap font image
     explicit gfxFont(const std::filesystem::path& path);
-    /// Renders a TTF/OTF font with the size and colors of a bitmap font image.
-    /// If fitWidth is set, the font is made small enough for every one of fitTexts to fit in that width.
+    struct TtfOptions {
+        /// Fonts to take the characters from that the font doesn't have (eg. Chinese characters)
+        std::vector<std::filesystem::path> fallbacks;
+        /// Characters to render besides ASCII and the common accented letters
+        std::u32string characters;
+        /// If set, the font is made small enough for every one of fitTexts to fit in this width
+        int fitWidth = 0;
+        std::vector<std::string> fitTexts;
+    };
+    /// Renders a TTF/OTF font with the size and colors of a bitmap font image
     gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath,
-        const std::vector<std::string>& fitTexts = {}, int fitWidth = 0);
+        const TtfOptions& options);
 
     void draw(int x, int y, std::string_view text,
         int dst_min_x = std::numeric_limits<int>::min(),

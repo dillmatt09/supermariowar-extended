@@ -978,7 +978,10 @@ void MenuState::update()
         } else if (MENU_CODE_LANGUAGE_CHANGED == code) {
             game_values.language = mGraphicsOptionsMenu->selectedLanguage();
             l10n::setLanguage(game_values.language);
-            rm->loadFonts();  // the icon labels' font is sized for the language
+            if (l10n::needsSmoothFont())
+                game_values.smoothfont = true;  // the pixel fonts can't show it
+            rm->loadFonts();  // the fonts get the characters of the language
+            mGraphicsOptionsMenu->refreshFontFields();
         } else if (MENU_CODE_WORLD_GRAPHICS_PACK_CHANGED == code) {
             rm->loadWorldGraphics();
         } else if (MENU_CODE_GAME_GRAPHICS_PACK_CHANGED == code) {

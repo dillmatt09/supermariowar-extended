@@ -26,6 +26,47 @@ StringMap g_strings;
 // Results of translate() for texts that went through number matching, so that they don't need
 // to be rebuilt every frame. Also keeps the returned views valid.
 StringMap g_cache;
+bool g_needsSmoothFont = false;
+std::u32string g_usedCharacters;
+
+void addCharacters(std::string_view text, std::u32string& out)
+{
+    // UTF-8 decoding, enough for collecting the characters
+    size_t i = 0;
+    while (i < text.size()) {
+        const unsigned char first = static_cast<unsigned char>(text[i]);
+        int length = 1;
+        char32_t cp = first;
+        if (first >= 0xF0) { length = 4; cp = first & 0x07; }
+        else if (first >= 0xE0) { length = 3; cp = first & 0x0F; }
+        else if (first >= 0xC0) { length = 2; cp = first & 0x1F; }
+        if (i + length > text.size())
+            break;
+        for (int k = 1; k < length; k++)
+            cp = (cp << 6) | (static_cast<unsigned char>(text[i + k]) & 0x3F);
+        i += length;
+        if (cp >= 0x80 && out.find(cp) == std::u32string::npos)
+            out += cp;
+    }
+}
+
+LocaleInfo readInfo(const fs::path& file, const toml::value& root)
+{
+    LocaleInfo info;
+    info.code = file.stem().string();
+    info.name = info.code;
+    info.englishName = info.code;
+    if (root.contains("meta")) {
+        const toml::value& meta = root.at("meta");
+        if (meta.contains("name") && meta.at("name").is_string())
+            info.name = meta.at("name").as_string();
+        if (meta.contains("english_name") && meta.at("english_name").is_string())
+            info.englishName = meta.at("english_name").as_string();
+        if (meta.contains("pixel_font") && meta.at("pixel_font").is_boolean())
+            info.pixelFont = meta.at("pixel_font").as_boolean();
+    }
+    return info;
+}
 
 constexpr size_t MAX_CACHE_SIZE = 4096;
 
@@ -104,12 +145,8 @@ std::vector<LocaleInfo> listLocales()
             continue;
 
         LocaleInfo info;
-        info.code = entry.path().stem().string();
-        info.name = info.code;
         try {
-            const toml::value root = toml::parse(entry.path().string());
-            if (root.contains("meta") && root.at("meta").contains("name"))
-                info.name = root.at("meta").at("name").as_string();
+            info = readInfo(entry.path(), toml::parse(entry.path().string()));
         } catch (const std::exception& e) {
             std::cerr << "[l10n] Could not read " << entry.path().string() << ": " << e.what() << '\n';
             continue;
@@ -121,11 +158,26 @@ std::vector<LocaleInfo> listLocales()
     return locales;
 }
 
+std::optional<LocaleInfo> findLocale(const std::string& code)
+{
+    for (LocaleInfo& info : listLocales()) {
+        if (info.code == code)
+            return std::move(info);
+    }
+    return std::nullopt;
+}
+
 void setLanguage(const std::string& code)
 {
     g_strings.clear();
     g_cache.clear();
     g_language = std::string(DEFAULT_LANGUAGE);
+    g_needsSmoothFont = false;
+
+    // The names of the languages are shown in the language menu whatever the language is
+    g_usedCharacters.clear();
+    for (const LocaleInfo& info : listLocales())
+        addCharacters(info.name, g_usedCharacters);
 
     if (code.empty() || code == DEFAULT_LANGUAGE)
         return;
@@ -135,12 +187,16 @@ void setLanguage(const std::string& code)
     const fs::path file = localesDir() / (code + ".toml");
     try {
         StringMap strings;
-        if (!parse(toml::parse(file.string()), strings)) {
+        const toml::value root = toml::parse(file.string());
+        if (!parse(root, strings)) {
             std::cerr << "[l10n] No [strings] table in " << file.string() << '\n';
             return;
         }
         g_strings = std::move(strings);
         g_language = code;
+        g_needsSmoothFont = !readInfo(file, root).pixelFont;
+        for (const auto& [key, value] : g_strings)
+            addCharacters(value, g_usedCharacters);
     } catch (const std::exception& e) {
         std::cerr << "[l10n] Could not load " << file.string() << ": " << e.what() << '\n';
     }
@@ -149,6 +205,16 @@ void setLanguage(const std::string& code)
 const std::string& language()
 {
     return g_language;
+}
+
+bool needsSmoothFont()
+{
+    return g_needsSmoothFont;
+}
+
+const std::u32string& usedCharacters()
+{
+    return g_usedCharacters;
 }
 
 bool loadFromString(const std::string& tomlText)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,6 +27,8 @@ constexpr std::string_view DEFAULT_LANGUAGE = "en";
 struct LocaleInfo {
     std::string code;  // file name without extension, e.g. "es"
     std::string name;  // the name of the language in itself, e.g. "Español"
+    std::string englishName;  // e.g. "Spanish"
+    bool pixelFont = true;  // false if the pixel fonts can't show the language (eg. Russian, Japanese)
 };
 
 /// The locales found in the locales directory, sorted by code
@@ -34,8 +37,18 @@ std::vector<LocaleInfo> listLocales();
 /// Loads the translations of the given language; English or an unknown language clears them
 void setLanguage(const std::string& code);
 
+/// Information about a locale file, or nothing if it doesn't exist
+std::optional<LocaleInfo> findLocale(const std::string& code);
+
 /// The code of the language whose translations are loaded
 const std::string& language();
+
+/// Whether the loaded language needs a TTF/OTF font, because the pixel fonts can't show it
+bool needsSmoothFont();
+
+/// The characters of the loaded translations and of the names of all the languages,
+/// for the fonts to have them
+const std::u32string& usedCharacters();
 
 /// The translation of a text, or the text itself if there is none
 std::string_view translate(std::string_view text);

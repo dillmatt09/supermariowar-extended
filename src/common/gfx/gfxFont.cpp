@@ -8,6 +8,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include <algorithm>
+#include <set>
 #include <array>
 #include <cmath>
 #include <format>
@@ -401,8 +402,10 @@ std::string gfxFont::fontFamilyName(const std::filesystem::path& ttfPath)
 
 
 gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::path& styleReferencePath,
-    const std::vector<std::string>& fitTexts, int fitWidth)
+    const TtfOptions& options)
 {
+    const std::vector<std::string>& fitTexts = options.fitTexts;
+    const int fitWidth = options.fitWidth;
     const std::string path_str = ttfPath.generic_string();
     std::cout << "loading font " << path_str << " ...";
 
@@ -435,7 +438,8 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
             while (pos < text.size()) {
                 const char32_t c = nextCodepoint(text, pos);
                 int advance = 0;
-                TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance);
+                if (!TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance) || advance == 0)
+                    advance = static_cast<int>(TTF_GetFontSize(font.get()) * 1.5f);  // from a fallback font (see below)
                 width += advance + (c == ' ' ? OUTLINE : 2 * OUTLINE + letterSpacing);
             }
             return width;
@@ -470,10 +474,66 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
     std::u32string characters;
     for (char32_t c = ASCII_FIRST_PRINTABLE; c <= ASCII_LAST_PRINTABLE; c++)
         characters += c;
-    for (char32_t c : EXTRA_CHARACTERS) {
-        if (TTF_FontHasGlyph(font.get(), c))
-            characters += c;
+    {
+        std::set<char32_t> seen(characters.begin(), characters.end());
+        for (std::u32string_view extra : {EXTRA_CHARACTERS, std::u32string_view(options.characters)}) {
+            for (char32_t c : extra) {
+                if (c > ' ' && seen.insert(c).second)
+                    characters += c;
+            }
+        }
     }
+
+    // The fonts to take the characters from that the font doesn't have; opened when first needed,
+    // and sized so that a full-width character fits in the height of the bitmap font
+    struct Fallback {
+        std::filesystem::path path;
+        TtfFontPtr font;
+        bool opened = false;
+        int top = 0;  // where the rendered characters go in the cell
+    };
+    std::vector<Fallback> fallbacks;
+    for (const auto& path : options.fallbacks)
+        fallbacks.push_back({path, nullptr});
+    const auto openFallback = [&](Fallback& fb) {
+        fb.opened = true;
+        fb.font = TtfFontPtr(TTF_OpenFont(fb.path.generic_string().c_str(), TTF_GetFontSize(font.get())));
+        if (!fb.font)
+            return;
+        TTF_SetFontHinting(fb.font.get(), TTF_HINTING_MONO);
+
+        // Measure a typical character of the script: an ideograph, a kana, a hangul or a cyrillic letter
+        char32_t sample = 0;
+        for (char32_t c : {U'国', U'あ', U'한', U'Ж', U'H'}) {
+            if (TTF_FontHasGlyph(fb.font.get(), c)) {
+                sample = c;
+                break;
+            }
+        }
+        int minY = 0, maxY = 0;
+        const auto measure = [&] {
+            return sample && TTF_GetGlyphMetrics(fb.font.get(), sample, nullptr, nullptr, &minY, &maxY, nullptr);
+        };
+        for (float size = TTF_GetFontSize(font.get()) * 1.5f; size > 5.f; size -= 0.5f) {
+            TTF_SetFontSize(fb.font.get(), size);
+            if (!measure() || maxY - minY + 2 * OUTLINE <= cellHeight)
+                break;
+        }
+        // Center the typical character in the cell
+        const int inkHeight = maxY - minY;
+        fb.top = (cellHeight - inkHeight) / 2 - (TTF_GetFontAscent(fb.font.get()) - maxY);
+    };
+    const auto fontFor = [&](char32_t c) -> std::pair<TTF_Font*, int> {
+        if (TTF_FontHasGlyph(font.get(), c))
+            return {font.get(), baselineY};
+        for (Fallback& fb : fallbacks) {
+            if (!fb.opened)
+                openFallback(fb);
+            if (fb.font && TTF_FontHasGlyph(fb.font.get(), c))
+                return {fb.font.get(), fb.top};
+        }
+        return {nullptr, 0};
+    };
 
     // Render every character, colorize them in the style of the bitmap font
     struct Rendered {
@@ -484,10 +544,15 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
     int atlasWidth = 0;
     const SDL_Color white {255, 255, 255, 255};
     for (char32_t c : characters) {
-        auto glyph = SdlSurfacePtr(TTF_RenderGlyph_Blended(font.get(), c, white));
+        const bool isAscii = c >= ASCII_FIRST_PRINTABLE && c <= ASCII_LAST_PRINTABLE;
+        const auto [glyphFont, glyphTop] = fontFor(c);
+        if (!glyphFont && !isAscii)
+            continue;  // no font has it (the ASCII characters keep their place in the atlas)
+        TTF_Font* const renderFont = glyphFont ? glyphFont : font.get();
+        auto glyph = SdlSurfacePtr(glyphFont ? TTF_RenderGlyph_Blended(renderFont, c, white) : nullptr);
         SdlSurfacePtr argb;
         int advance = 0;
-        TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance);
+        TTF_GetGlyphMetrics(renderFont, c, nullptr, nullptr, nullptr, nullptr, &advance);
         if (glyph)
             argb = SdlSurfacePtr(SDL_ConvertSurface(glyph.get(), SDL_PIXELFORMAT_ARGB8888));
 
@@ -497,7 +562,7 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
 
         if (argb) {
             // fill alpha at the cell position
-            const auto fillAlpha = [&](int x, int y) { return alphaAt(argb.get(), x - OUTLINE, y - baselineY); };
+            const auto fillAlpha = [&](int x, int y) { return alphaAt(argb.get(), x - OUTLINE, y - glyphTop); };
             for (int y = 0; y < cellHeight; y++) {
                 for (int x = 0; x < width; x++) {
                     const Uint8 fill = fillAlpha(x, y);

@@ -382,6 +382,13 @@ void main_game()
 
     game_values.ReadConfig();
     l10n::setLanguage(game_values.language);
+    if (l10n::needsSmoothFont()) {
+        // Languages the pixel fonts can't show need a TTF/OTF font
+        if (CResourceManager::listFontFiles().empty())
+            l10n::setLanguage("en");
+        else
+            game_values.smoothfont = true;
+    }
 
     //Assign the powerup weights to the selected preset
     for (short iPowerup = 0; iPowerup < NUM_POWERUPS; iPowerup++) {
