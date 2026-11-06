@@ -141,6 +141,7 @@ public:
 	short		skinids[MAX_PLAYERS];
     short		wandlimit;
     TournamentControlStyle tournamentcontrolstyle;  //ID for the player selected control style
+    CpuSelectStyle cpuselectstyle;  // who chooses the characters and teams of the CPU players
     short		wandfreezetime;
     bool		toplayer;
     bool		teamcolors;

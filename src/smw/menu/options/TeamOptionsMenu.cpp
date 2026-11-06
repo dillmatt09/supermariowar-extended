@@ -40,6 +40,13 @@ UI_TeamOptionsMenu::UI_TeamOptionsMenu()
     miTournamentControlField->setOutputPtr(&game_values.tournamentcontrolstyle);
     miTournamentControlField->setCurrentValue(game_values.tournamentcontrolstyle);
 
+    miCpuSelectField = new MI_SelectField<CpuSelectStyle>(&rm->spr_selectfield, 70, 300, "CPU Selection", 500, 220);
+    miCpuSelectField->add("Main Player", CpuSelectStyle::MainPlayer);
+    miCpuSelectField->add("All Players", CpuSelectStyle::AllPlayers);
+    miCpuSelectField->setOutputPtr(&game_values.cpuselectstyle);
+    miCpuSelectField->setCurrentValue(game_values.cpuselectstyle);
+    miCpuSelectField->setAutoAdvance(true);
+
     miTeamOptionsMenuBackButton = new MI_Button(&rm->spr_selectfield, 544, 432, "Back", 80, TextAlign::CENTER);
     miTeamOptionsMenuBackButton->SetCode(MENU_CODE_BACK_TO_OPTIONS_MENU);
 
@@ -49,8 +56,9 @@ UI_TeamOptionsMenu::UI_TeamOptionsMenu()
 
     AddControl(miTeamKillsField, miTeamOptionsMenuBackButton, miTeamColorsField, NULL, miTeamOptionsMenuBackButton);
     AddControl(miTeamColorsField, miTeamKillsField, miTournamentControlField, NULL, miTeamOptionsMenuBackButton);
-    AddControl(miTournamentControlField, miTeamColorsField, miTeamOptionsMenuBackButton, NULL, miTeamOptionsMenuBackButton);
-    AddControl(miTeamOptionsMenuBackButton, miTournamentControlField, miTeamKillsField, miTournamentControlField, NULL);
+    AddControl(miTournamentControlField, miTeamColorsField, miCpuSelectField, NULL, miTeamOptionsMenuBackButton);
+    AddControl(miCpuSelectField, miTournamentControlField, miTeamOptionsMenuBackButton, NULL, miTeamOptionsMenuBackButton);
+    AddControl(miTeamOptionsMenuBackButton, miCpuSelectField, miTeamKillsField, miCpuSelectField, NULL);
 
     AddNonControl(miTeamOptionsMenuLeftHeaderBar);
     AddNonControl(miTeamOptionsMenuRightHeaderBar);

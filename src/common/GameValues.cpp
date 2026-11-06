@@ -231,6 +231,7 @@ void CGameValues::init()
     secretsenabled  = false;
     poweruppreset   = 0;
     tournamentcontrolstyle = TournamentControlStyle::All;
+    cpuselectstyle = CpuSelectStyle::MainPlayer;
 
 
     pfFilters.resize(NUM_AUTO_FILTERS + filterslist->count(), false);

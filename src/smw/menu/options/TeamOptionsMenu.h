@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameplayStyles.h"
 #include "uimenu.h"
 
 class MI_Button;
@@ -21,6 +22,7 @@ private:
     MI_SelectField<TeamCollisionStyle>* miTeamKillsField;
     MI_SelectField<bool>* miTeamColorsField;
     MI_SelectField<TournamentControlStyle>* miTournamentControlField;
+    MI_SelectField<CpuSelectStyle>* miCpuSelectField;
     MI_Button* miTeamOptionsMenuBackButton;
 
     MI_Image* miTeamOptionsMenuLeftHeaderBar;

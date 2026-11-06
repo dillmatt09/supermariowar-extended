@@ -8,6 +8,13 @@ enum class TeamCollisionStyle : unsigned char {
 };
 
 
+/// Who chooses the character and team of the CPU players on the team select screen
+enum class CpuSelectStyle : unsigned char {
+    MainPlayer,  ///< The first human player chooses for every CPU
+    AllPlayers,  ///< The CPUs are shared between the human players
+};
+
+
 enum class TournamentControlStyle : unsigned char {
     All,
     GameWinner,

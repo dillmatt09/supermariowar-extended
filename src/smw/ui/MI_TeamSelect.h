@@ -6,6 +6,7 @@
 #include "uicontrol.h"
 
 class MI_Image;
+class COutputControl;
 
 class MI_TeamSelect : public UI_Control
 {
@@ -33,6 +34,20 @@ class MI_TeamSelect : public UI_Control
 		void SetPlayerColor(short iPlayerID, short iTeam);
 		void DrawBackground(bool fWide) const;
 		void DrawReadyPanel(short iPlayer, short x, short y, short w) const;
+
+		// Choosing the characters and teams of the CPU players
+		bool IsHuman(short iPlayer) const;
+		bool IsCpu(short iPlayer) const;
+		bool AreHumansReady() const;
+		/// The human player who chooses for this CPU (or -1 if there are no humans)
+		short GetCpuChooser(short iCpu) const;
+		/// The CPU the human player is currently choosing for, or -1
+		short GetCpuBeingChosen(short iHuman) const;
+		/// The last CPU the human player has finished choosing for, or -1
+		short GetLastChosenCpu(short iHuman) const;
+		void UpdateAllReady();
+		/// Changes the team and character of `iTarget` based on the input
+		void HandleSelection(short iTarget, COutputControl * playerKeys);
 
 		gfxSprite * spr;
 

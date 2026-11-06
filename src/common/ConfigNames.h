@@ -68,6 +68,13 @@ template<> struct NamedEnum<ScoreboardStyle> {
         { ScoreboardStyle::Corners, "corners" },
     });
 };
+template<> struct NamedEnum<CpuSelectStyle> {
+    static constexpr auto table = std::to_array<std::pair<CpuSelectStyle, std::string_view>>({
+        { CpuSelectStyle::MainPlayer, "main_player" },
+        { CpuSelectStyle::AllPlayers, "all_players" },
+    });
+};
+
 template<> struct NamedEnum<TournamentControlStyle> {
     static constexpr auto table = std::to_array<std::pair<TournamentControlStyle, std::string_view>>({
         { TournamentControlStyle::All, "all" },
@@ -483,7 +490,8 @@ template<> struct NamedLayout<CGameConfig> {
         section("team",
             field("team_collision_style", &CGameConfig::teamcollision),
             field("team_colors", &CGameConfig::teamcolors),
-            field("tournament_control_style", &CGameConfig::tournamentcontrolstyle)),
+            field("tournament_control_style", &CGameConfig::tournamentcontrolstyle),
+            field("cpu_select_style", &CGameConfig::cpuselectstyle)),
         section("players",
             field("skins", &Bridge::skins),
             field("player_slots", &Bridge::player_slots)),

@@ -144,8 +144,19 @@ void MI_TeamSelect::DrawReadyPanel(short iPlayer, short x, short y, short w) con
     }
 
     const short nameX = x + 36;
+    short nameEndX = x + w - 10;
     rm->spr_menu_boxed_numbers.draw(x + 16, y + 20, {iPlayer * 16, game_values.colorids[iPlayer] * 16, 16, 16});
-    rm->menu_font_small.drawChopRight(nameX, y + 36 - rm->menu_font_small.getHeight(), x + w - 10 - nameX,
+
+    // Show which player is choosing for this CPU right now
+    if (IsCpu(iPlayer) && !fReady[iPlayer]) {
+        const short iChooser = GetCpuChooser(iPlayer);
+        if (iChooser >= 0 && GetCpuBeingChosen(iChooser) == iPlayer) {
+            rm->spr_menu_boxed_numbers.draw(x + w - 32, y + 20, {iChooser * 16, game_values.colorids[iChooser] * 16, 16, 16});
+            nameEndX = x + w - 34;
+        }
+    }
+
+    rm->menu_font_small.drawChopRight(nameX, y + 36 - rm->menu_font_small.getHeight(), nameEndX - nameX,
         game_values.randomskin[iPlayer] ? "Random" : skinlist->at(game_values.skinids[iPlayer]).name.c_str());
 
     rm->spr_player_select_ready.draw(x + (w - 34) / 2, y + 40,
@@ -208,130 +219,213 @@ void MI_TeamSelect::Draw()
     }
 }
 
-MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
+bool MI_TeamSelect::IsHuman(short iPlayer) const
+{
+    return game_values.playercontrol[iPlayer] == 1;
+}
+
+bool MI_TeamSelect::IsCpu(short iPlayer) const
+{
+    return game_values.playercontrol[iPlayer] == 2;
+}
+
+bool MI_TeamSelect::AreHumansReady() const
 {
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
-        COutputControl * playerKeys = &game_values.playerInput.outputControls[iPlayer];
+        if (IsHuman(iPlayer) && !fReady[iPlayer])
+            return false;
+    }
+    return true;
+}
 
-        if (game_values.playercontrol[iPlayer] > 0 && !fReady[iPlayer]) { //if this player is player or cpu
-            if (playerKeys->menu_left.fPressed) {
-                if (playerKeys->menu_right.fDown)
-                    game_values.randomskin[iPlayer] = !game_values.randomskin[iPlayer];
-                else
-                    FindNewTeam(iPlayer, -1);
-            }
+short MI_TeamSelect::GetCpuChooser(short iCpu) const
+{
+    short iHumans[MAX_PLAYERS];
+    short iHumanCount = 0;
+    short iCpuIndex = 0;
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
+        if (IsHuman(iPlayer))
+            iHumans[iHumanCount++] = iPlayer;
+        else if (IsCpu(iPlayer) && iPlayer < iCpu)
+            iCpuIndex++;
+    }
 
-            if (playerKeys->menu_right.fPressed) {
-                if (playerKeys->menu_left.fDown)
-                    game_values.randomskin[iPlayer] = !game_values.randomskin[iPlayer];
-                else
-                    FindNewTeam(iPlayer, 1);
-            }
+    if (iHumanCount == 0)
+        return -1;
 
-            //Scroll up/down through player skins
-            if (!game_values.randomskin[iPlayer]) {
-                if (playerKeys->menu_up.fPressed) {
-                    do {
-                        if (playerKeys->menu_down.fDown) {
-                            game_values.skinids[iPlayer] = RANDOM_INT(skinlist->count());
-                        } else {
-                            if (--game_values.skinids[iPlayer] < 0)
-                                game_values.skinids[iPlayer] = (short)skinlist->count() - 1;
-                        }
-                    } while (!rm->LoadMenuSkin(iPlayer, game_values.skinids[iPlayer], game_values.colorids[iPlayer], false));
-                } else if (playerKeys->menu_up.fDown) {
-                    if (iFastScroll[iPlayer] == 0) {
-                        if (++iFastScrollTimer[iPlayer] > 40) {
-                            iFastScroll[iPlayer] = 1;
-                        }
-                    } else {
-                        if (++iFastScrollTimer[iPlayer] > 5) {
-                            do {
-                                if (--game_values.skinids[iPlayer] < 0)
-                                    game_values.skinids[iPlayer] = (short)skinlist->count() - 1;
-                            } while (!rm->LoadMenuSkin(iPlayer, game_values.skinids[iPlayer], game_values.colorids[iPlayer], false));
+    if (game_values.cpuselectstyle == CpuSelectStyle::AllPlayers)
+        return iHumans[iCpuIndex % iHumanCount];  // take turns: 1st CPU to the 1st human, 2nd CPU to the 2nd, ...
 
-                            iFastScrollTimer[iPlayer] = 0;
-                        }
-                    }
+    return iHumans[0];
+}
+
+short MI_TeamSelect::GetCpuBeingChosen(short iHuman) const
+{
+    // The CPUs are set up after every human player is ready, one by one
+    if (!AreHumansReady())
+        return -1;
+
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
+        if (IsCpu(iPlayer) && !fReady[iPlayer] && GetCpuChooser(iPlayer) == iHuman)
+            return iPlayer;
+    }
+    return -1;
+}
+
+short MI_TeamSelect::GetLastChosenCpu(short iHuman) const
+{
+    for (short iPlayer = MAX_PLAYERS - 1; iPlayer >= 0; iPlayer--) {
+        if (IsCpu(iPlayer) && fReady[iPlayer] && GetCpuChooser(iPlayer) == iHuman)
+            return iPlayer;
+    }
+    return -1;
+}
+
+void MI_TeamSelect::UpdateAllReady()
+{
+    fAllReady = true;
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
+        if (game_values.playercontrol[iPlayer] > 0 && !fReady[iPlayer]) {
+            fAllReady = false;
+            break;
+        }
+    }
+}
+
+void MI_TeamSelect::HandleSelection(short iTarget, COutputControl * playerKeys)
+{
+    if (playerKeys->menu_left.fPressed) {
+        if (playerKeys->menu_right.fDown)
+            game_values.randomskin[iTarget] = !game_values.randomskin[iTarget];
+        else
+            FindNewTeam(iTarget, -1);
+    }
+
+    if (playerKeys->menu_right.fPressed) {
+        if (playerKeys->menu_left.fDown)
+            game_values.randomskin[iTarget] = !game_values.randomskin[iTarget];
+        else
+            FindNewTeam(iTarget, 1);
+    }
+
+    //Scroll up/down through player skins
+    if (!game_values.randomskin[iTarget]) {
+        if (playerKeys->menu_up.fPressed) {
+            do {
+                if (playerKeys->menu_down.fDown) {
+                    game_values.skinids[iTarget] = RANDOM_INT(skinlist->count());
+                } else {
+                    if (--game_values.skinids[iTarget] < 0)
+                        game_values.skinids[iTarget] = (short)skinlist->count() - 1;
                 }
-
-                if (playerKeys->menu_down.fPressed) {
-                    do {
-                        if (playerKeys->menu_up.fDown) {
-                            game_values.skinids[iPlayer] = RANDOM_INT( skinlist->count());
-                        } else {
-                            if (++game_values.skinids[iPlayer] >= static_cast<short>(skinlist->count()))
-                                game_values.skinids[iPlayer] = 0;
-                        }
-                    } while (!rm->LoadMenuSkin(iPlayer, game_values.skinids[iPlayer], game_values.colorids[iPlayer], false));
-                } else if (playerKeys->menu_down.fDown) {
-                    if (iFastScroll[iPlayer] == 0) {
-                        if (++iFastScrollTimer[iPlayer] > 40) {
-                            iFastScroll[iPlayer] = 1;
-                        }
-                    } else {
-                        if (++iFastScrollTimer[iPlayer] > 5) {
-                            do {
-                                if (++game_values.skinids[iPlayer] >= static_cast<short>(skinlist->count()))
-                                    game_values.skinids[iPlayer] = 0;
-                            } while (!rm->LoadMenuSkin(iPlayer, game_values.skinids[iPlayer], game_values.colorids[iPlayer], false));
-
-                            iFastScrollTimer[iPlayer] = 0;
-                        }
-                    }
-                }
-
-                if ((!playerKeys->menu_up.fDown && !playerKeys->menu_down.fDown) ||
-                        (playerKeys->menu_up.fDown && playerKeys->menu_down.fDown)) {
-                    iFastScroll[iPlayer] = 0;
-                    iFastScrollTimer[iPlayer] = 0;
+            } while (!rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false));
+        } else if (playerKeys->menu_up.fDown) {
+            if (iFastScroll[iTarget] == 0) {
+                if (++iFastScrollTimer[iTarget] > 40) {
+                    iFastScroll[iTarget] = 1;
                 }
             } else {
-                iFastScroll[iPlayer] = 0;
-                iFastScrollTimer[iPlayer] = 0;
-            }
-
-            if (playerKeys->menu_random.fPressed) {
-                if (playerKeys->menu_scrollfast.fDown) {
-                    game_values.randomskin[iPlayer] = !game_values.randomskin[iPlayer];
-                } else if (!game_values.randomskin[iPlayer]) {
+                if (++iFastScrollTimer[iTarget] > 5) {
                     do {
-                        game_values.skinids[iPlayer] = RANDOM_INT(skinlist->count());
-                    } while (!rm->LoadMenuSkin(iPlayer, game_values.skinids[iPlayer], game_values.colorids[iPlayer], false));
+                        if (--game_values.skinids[iTarget] < 0)
+                            game_values.skinids[iTarget] = (short)skinlist->count() - 1;
+                    } while (!rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false));
+
+                    iFastScrollTimer[iTarget] = 0;
                 }
             }
         }
 
-        if (playerInput->outputControls[iPlayer].menu_select.fPressed) {
-            fReady[iPlayer] = true;
+        if (playerKeys->menu_down.fPressed) {
+            do {
+                if (playerKeys->menu_up.fDown) {
+                    game_values.skinids[iTarget] = RANDOM_INT( skinlist->count());
+                } else {
+                    if (++game_values.skinids[iTarget] >= static_cast<short>(skinlist->count()))
+                        game_values.skinids[iTarget] = 0;
+                }
+            } while (!rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false));
+        } else if (playerKeys->menu_down.fDown) {
+            if (iFastScroll[iTarget] == 0) {
+                if (++iFastScrollTimer[iTarget] > 40) {
+                    iFastScroll[iTarget] = 1;
+                }
+            } else {
+                if (++iFastScrollTimer[iTarget] > 5) {
+                    do {
+                        if (++game_values.skinids[iTarget] >= static_cast<short>(skinlist->count()))
+                            game_values.skinids[iTarget] = 0;
+                    } while (!rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false));
 
-            if (fAllReady && (DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0)) {
+                    iFastScrollTimer[iTarget] = 0;
+                }
+            }
+        }
+
+        if ((!playerKeys->menu_up.fDown && !playerKeys->menu_down.fDown) ||
+                (playerKeys->menu_up.fDown && playerKeys->menu_down.fDown)) {
+            iFastScroll[iTarget] = 0;
+            iFastScrollTimer[iTarget] = 0;
+        }
+    } else {
+        iFastScroll[iTarget] = 0;
+        iFastScrollTimer[iTarget] = 0;
+    }
+
+    if (playerKeys->menu_random.fPressed) {
+        if (playerKeys->menu_scrollfast.fDown) {
+            game_values.randomskin[iTarget] = !game_values.randomskin[iTarget];
+        } else if (!game_values.randomskin[iTarget]) {
+            do {
+                game_values.skinids[iTarget] = RANDOM_INT(skinlist->count());
+            } while (!rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false));
+        }
+    }
+}
+
+MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
+{
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
+        COutputControl * playerKeys = &game_values.playerInput.outputControls[iPlayer];
+        const bool fCanLeave = DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0;
+
+        // A human player first chooses for themselves, then for the CPUs they are responsible for
+        short iTarget = -1;
+        if (IsHuman(iPlayer))
+            iTarget = fReady[iPlayer] ? GetCpuBeingChosen(iPlayer) : iPlayer;
+
+        if (iTarget >= 0)
+            HandleSelection(iTarget, playerKeys);
+
+        if (playerKeys->menu_select.fPressed) {
+            if (fAllReady && fCanLeave) {
                 fModifying = false;
                 printf("MI_TeamSelect::SendInput MENU_CODE_TO_GAME_SETUP_MENU\n");
                 return MENU_CODE_TO_GAME_SETUP_MENU;
             }
 
-            fAllReady = true;
-            for (short i = 0; i < MAX_PLAYERS; i++) {
-                if (!fReady[i]) {
-                    fAllReady = false;
-                    break;
-                }
+            if (iTarget >= 0)
+                fReady[iTarget] = true;
+
+            UpdateAllReady();
+        }
+
+        if (playerKeys->menu_cancel.fPressed) {
+            const short iLastCpu = IsHuman(iPlayer) ? GetLastChosenCpu(iPlayer) : -1;
+
+            if (IsHuman(iPlayer) && fReady[iPlayer] && iLastCpu >= 0 && AreHumansReady()) {
+                // Go back to the previous CPU
+                fReady[iLastCpu] = false;
+                fAllReady = false;
+            } else if (IsHuman(iPlayer) && fReady[iPlayer]) {
+                fReady[iPlayer] = false;
+                fAllReady = false;
+            } else if (fCanLeave) {
+                fModifying = false;
+                return MENU_CODE_BACK_TO_MATCH_SELECTION_MENU;
             }
         }
 
-        if (playerInput->outputControls[iPlayer].menu_cancel.fPressed) {
-            if (game_values.playercontrol[iPlayer] > 0 && fReady[iPlayer]) {
-                fReady[iPlayer] = false;
-                fAllReady = false;
-            } else {
-                if (DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0) {
-                    fModifying = false;
-                    return MENU_CODE_BACK_TO_MATCH_SELECTION_MENU;
-                }
-            }
-        }
         if (DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice) {
             short team = GetTeam(iPlayer);
             gfx_setjoystickteamcolor(SDL_GetJoystickFromPlayerIndex(playerInput->inputControls[iPlayer]->iDevice), team, fReady[iPlayer] ? 1.0 : 0.5);
@@ -485,11 +579,16 @@ void MI_TeamSelect::Reset()
 
     fAllReady = true;
 
+    bool fHasHumans = false;
+    for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++)
+        fHasHumans |= IsHuman(iPlayer);
+
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
         iFastScroll[iPlayer] = 0;
         iFastScrollTimer[iPlayer] = 0;
 
-        if (game_values.playercontrol[iPlayer] == 1) {
+        // Humans choose for themselves, and then for the CPUs. Without human players the CPUs are ready immediately.
+        if (IsHuman(iPlayer) || (IsCpu(iPlayer) && fHasHumans)) {
             fReady[iPlayer] = false;
             fAllReady = false;
         } else {
