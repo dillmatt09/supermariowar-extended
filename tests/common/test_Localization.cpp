@@ -4,6 +4,11 @@
 
 #include <string>
 
+namespace {
+// Compared as std::string, which doctest can print without <ostream> (MSVC needs it for string_view)
+std::string tr(std::string_view text) { return std::string(l10n::translate(text)); }
+}
+
 TEST_CASE("Localization translates texts, numbers and padded texts")
 {
     REQUIRE(l10n::loadFromString(R"(
@@ -18,15 +23,15 @@ name = "Español"
 "Player" = "Jugador"
 )"));
 
-    CHECK(l10n::translate("Options") == "Opciones");
-    CHECK(l10n::translate("Player 7") == "Jugador 7");
-    CHECK(l10n::translate("2.5 Seconds") == "2.5 segundos");
-    CHECK(l10n::translate("2x Players - 3") == "2x Jugadores - 3");
-    CHECK(l10n::translate("Player ") == "Jugador ");
-    CHECK(l10n::translate("Mario") == "Mario");
-    CHECK(l10n::translate("Player 7 Wins!") == "Player 7 Wins!");
-    CHECK(l10n::translate("") == "");
+    CHECK(tr("Options") == "Opciones");
+    CHECK(tr("Player 7") == "Jugador 7");
+    CHECK(tr("2.5 Seconds") == "2.5 segundos");
+    CHECK(tr("2x Players - 3") == "2x Jugadores - 3");
+    CHECK(tr("Player ") == "Jugador ");
+    CHECK(tr("Mario") == "Mario");
+    CHECK(tr("Player 7 Wins!") == "Player 7 Wins!");
+    CHECK(tr("") == "");
 
     l10n::setLanguage("en");
-    CHECK(l10n::translate("Options") == "Options");
+    CHECK(tr("Options") == "Options");
 }
