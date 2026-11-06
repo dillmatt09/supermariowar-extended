@@ -398,7 +398,9 @@ void CResourceManager::loadMenuGraphics()
     spr_dialogbutton = builder("gfx/packs/menu/dialog_button.png").create();
     spr_tournament_background = builder("gfx/packs/menu/tournament_background.png").create();
     spr_tournament_powerup_splash = builder("gfx/packs/menu/tournament_powerup_splash.png").create();
-    spr_player_select_background = builder("gfx/packs/menu/player_select_background.png").withTeamBands({teamcolors::Axis::Horizontal, 14, 96}).create();
+    spr_player_select_background = builder("gfx/packs/menu/player_select_background.png").withTeamBands({teamcolors::Axis::Horizontal, 14, 96})
+        .withoutBakedTeamColors()  // player_select_background_8p.png has a different layout, see below
+        .create();
     // Team select background with 8 columns; if missing, it's built from the 4 column version
     const std::string background8pPath = convertPath("gfx/packs/menu/player_select_background_8p.png", graphicspack);
     spr_player_select_background_8p = fs::exists(background8pPath) ? ImageLoader(background8pPath).create() : gfxSprite();

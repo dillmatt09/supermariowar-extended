@@ -103,6 +103,11 @@ public:
         m_team_bands.push_back(layout);
         return *this;
     }
+    /// Always generate the team colors, even if the graphics pack has an 8 color version (`<name>_8p.png`)
+    ImageLoader& withoutBakedTeamColors() {
+        m_use_baked_team_colors = false;
+        return *this;
+    }
     gfxSprite create() const;
 
 private:
@@ -112,6 +117,7 @@ private:
     std::optional<Uint8> m_alpha = std::nullopt;
     std::optional<int> m_wrap_x = std::nullopt;
     std::vector<teamcolors::BandLayout> m_team_bands;
+    bool m_use_baked_team_colors = true;
 };
 
 #endif // GFX_SPRITE

@@ -24,10 +24,11 @@ SdlSurfacePtr loadImage(
     bool optimize = true,
     std::optional<RGB> color_key = std::nullopt,
     std::optional<Uint8> alpha = std::nullopt,
-    const std::vector<teamcolors::BandLayout>& team_bands = {})
+    const std::vector<teamcolors::BandLayout>& team_bands = {},
+    bool use_baked_team_colors = true)
 {
     // A graphics pack can contain a version of the sprite sheet that already has all the team colors
-    const fs::path baked_path = team_bands.empty() ? fs::path() : teamcolors::bakedPath(path);
+    const fs::path baked_path = (team_bands.empty() || !use_baked_team_colors) ? fs::path() : teamcolors::bakedPath(path);
     const bool use_baked = !baked_path.empty() && fs::exists(baked_path);
     const std::string path_str = (use_baked ? baked_path : path).generic_string();
 
@@ -203,5 +204,5 @@ void gfxSprite::setWrap(short wrapsize)
 
 gfxSprite ImageLoader::create() const
 {
-    return gfxSprite(loadImage(m_path, m_optimize, m_color_key, m_alpha, m_team_bands), m_wrap_x);
+    return gfxSprite(loadImage(m_path, m_optimize, m_color_key, m_alpha, m_team_bands, m_use_baked_team_colors), m_wrap_x);
 }

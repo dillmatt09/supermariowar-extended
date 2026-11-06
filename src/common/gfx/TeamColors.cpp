@@ -134,7 +134,7 @@ std::array<RGB, MAX_PLAYERS - NUM_BASE_TEAM_COLORS> generatePaletteColors(
 std::filesystem::path bakedPath(const std::filesystem::path& path)
 {
     std::filesystem::path baked = path;
-    baked.replace_filename(path.stem().string() + "_" + std::to_string(MAX_PLAYERS) + "colors" + path.extension().string());
+    baked.replace_filename(path.stem().string() + "_" + std::to_string(MAX_PLAYERS) + "p" + path.extension().string());
     return baked;
 }
 

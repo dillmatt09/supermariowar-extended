@@ -75,7 +75,7 @@ struct BandLayout {
 };
 
 /// The path of the version of a sprite sheet that already contains every team color
-/// (eg. flags.png -> flags_8colors.png). If it exists, it is used instead of generating the colors.
+/// (eg. flags.png -> flags_8p.png). If it exists, it is used instead of generating the colors.
 std::filesystem::path bakedPath(const std::filesystem::path& path);
 
 /// Takes a sprite sheet with 4 team bands, and returns a new ARGB8888 surface where
