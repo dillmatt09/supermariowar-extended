@@ -102,3 +102,9 @@ target_link_libraries(CommonFiles
     SDL3_ttf::SDL3_ttf
     toml11::toml11
 )
+
+# The sources are UTF-8 (accented letters in the fonts and translations); MSVC would read
+# them in the system code page otherwise
+if(MSVC)
+    target_compile_options(CommonFiles PUBLIC /utf-8)
+endif()
