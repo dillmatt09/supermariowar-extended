@@ -141,3 +141,8 @@ TEST_CASE("Images with an unexpected layout are not changed")
     CHECK(out->w == src->w);
     CHECK(out->h == src->h);
 }
+
+TEST_CASE("Path of the sprite sheets with every team color")
+{
+    CHECK(teamcolors::bakedPath("gfx/packs/Classic/modeobjects/flags.png") == std::filesystem::path("gfx/packs/Classic/modeobjects/flags_8colors.png"));
+}

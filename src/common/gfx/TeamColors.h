@@ -7,6 +7,7 @@
 #include <SDL3/SDL.h>
 
 #include <array>
+#include <filesystem>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -72,6 +73,10 @@ struct BandLayout {
     static constexpr int AFTER_BANDS = -1; ///< Right after the original bands
     static constexpr int AT_END = -2;      ///< At the end of the image
 };
+
+/// The path of the version of a sprite sheet that already contains every team color
+/// (eg. flags.png -> flags_8colors.png). If it exists, it is used instead of generating the colors.
+std::filesystem::path bakedPath(const std::filesystem::path& path);
 
 /// Takes a sprite sheet with 4 team bands, and returns a new ARGB8888 surface where
 /// the 4 generated team bands are inserted right after the original ones (or at `insertAt`).

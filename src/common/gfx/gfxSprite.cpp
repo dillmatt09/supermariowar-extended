@@ -26,7 +26,10 @@ SdlSurfacePtr loadImage(
     std::optional<Uint8> alpha = std::nullopt,
     const std::vector<teamcolors::BandLayout>& team_bands = {})
 {
-    const std::string path_str = path.generic_string();
+    // A graphics pack can contain a version of the sprite sheet that already has all the team colors
+    const fs::path baked_path = team_bands.empty() ? fs::path() : teamcolors::bakedPath(path);
+    const bool use_baked = !baked_path.empty() && fs::exists(baked_path);
+    const std::string path_str = (use_baked ? baked_path : path).generic_string();
 
     std::cout << "loading sprite ";
     if (color_key) {
@@ -43,8 +46,10 @@ SdlSurfacePtr loadImage(
         throw std::format("Couldn't load {}: {}", path_str, SDL_GetError());
     }
 
-    for (const teamcolors::BandLayout& layout : team_bands)
-        raw = teamcolors::extendBands(raw.get(), layout);
+    if (!use_baked) {
+        for (const teamcolors::BandLayout& layout : team_bands)
+            raw = teamcolors::extendBands(raw.get(), layout);
+    }
 
     if (color_key) {
         const Uint32 key = SDL_MapSurfaceRGB(raw.get(), color_key->r, color_key->g, color_key->b);
