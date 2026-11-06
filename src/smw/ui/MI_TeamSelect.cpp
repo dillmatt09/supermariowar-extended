@@ -102,6 +102,14 @@ void MI_TeamSelect::DrawBackground(bool fWide) const
         return;
     }
 
+    // Use the 8 column background of the graphics pack, if it has one
+    const gfxSprite& background8p = rm->spr_player_select_background_8p;
+    if (background8p.getSurface()) {
+        background8p.draw(m_pos.x, m_pos.y, {0, 0, BG_WIDTH, BG_HEIGHT});
+        return;
+    }
+
+    // Otherwise build it from the 4 column version.
     // Header: keep the corners, but hide the team names (they belong to the 4 column layout)
     spr->draw(m_pos.x, m_pos.y, {0, 0, BG_HEADER_FROM, BG_COLUMN_TOP});
     for (short x = BG_HEADER_FROM; x < BG_HEADER_TO; x++)

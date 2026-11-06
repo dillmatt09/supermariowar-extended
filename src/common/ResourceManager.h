@@ -86,6 +86,7 @@ public:
 	gfxSprite		spr_tournament_background;
 	gfxSprite		spr_tournament_powerup_splash;
 	gfxSprite		spr_player_select_background;
+	gfxSprite		spr_player_select_background_8p; // optional, empty if the graphics pack doesn't have it
 	gfxSprite		spr_player_select_ready;
 	//gfxSprite		spr_ipfield;
 	gfxSprite		spr_selectfield;
