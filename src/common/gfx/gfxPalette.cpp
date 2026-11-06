@@ -31,9 +31,8 @@ bool gfxPalette::load(const fs::path& path)
     if (SDL_MUSTLOCK(sprite.getSurface()))
         SDL_LockSurface(sprite.getSurface());
 
-    // The palette image contains the colors of the 4 base teams;
-    // the colors of the other teams are generated from them
     const int baseRows = 1 + NUM_BASE_TEAM_COLORS * PlayerPalette::COUNT;
+    const int fullRows = 1 + MAX_PLAYERS * PlayerPalette::COUNT;
     if (sprite.getHeight() < baseRows)
         throw std::format("The palette {} has too few rows", path.string());
 
@@ -41,41 +40,60 @@ bool gfxPalette::load(const fs::path& path)
         return getRgb(sprite.getSurface(), x, 1 + team * PlayerPalette::COUNT + playerState);
     };
 
-    // Overall hue of each base team (from the team specific colors of the normal state)
-    std::array<float, NUM_BASE_TEAM_COLORS> baseHues {};
-    for (size_t team = 0; team < NUM_BASE_TEAM_COLORS; team++) {
-        std::vector<RGB> samples;
+    if (sprite.getHeight() >= fullRows) {
+        // The palette has colors for every team, use them as they are
         for (int x = 0; x < sprite.getWidth(); x++) {
-            const RGB color = teamColor(x, team, PlayerPalette::normal);
-            for (size_t other = 0; other < NUM_BASE_TEAM_COLORS; other++) {
-                if (teamColor(x, other, PlayerPalette::normal) != color) {
-                    samples.push_back(color);
-                    break;
+            ColorSheet sheet {};
+            for (size_t team = 0; team < MAX_PLAYERS; team++) {
+                for (size_t playerState = 0; playerState < PlayerPalette::COUNT; playerState++)
+                    sheet.replacements[team * PlayerPalette::COUNT + playerState] = teamColor(x, team, playerState);
+            }
+            m_colorsheets.emplace(getRgb(sprite.getSurface(), x, 0), std::move(sheet));
+        }
+    } else {
+        // The palette only has the 4 original teams, generate the rest.
+        // In the skins, the team color is marked with the shades of red (the other key colors,
+        // like the blue of the overalls, can also differ between teams, but they're not the team color).
+        // Only these columns are recolored, everything else is copied from the base team.
+        auto isTeamColorKey = [](RGB key) {
+            return key.r > 0 && key.g == 0 && key.b == 0;
+        };
+
+        std::array<std::vector<RGB>, NUM_BASE_TEAM_COLORS> teamColorSamples;
+        for (int x = 0; x < sprite.getWidth(); x++) {
+            if (!isTeamColorKey(getRgb(sprite.getSurface(), x, 0)))
+                continue;
+            for (size_t team = 0; team < NUM_BASE_TEAM_COLORS; team++)
+                teamColorSamples[team].push_back(teamColor(x, team, PlayerPalette::normal));
+        }
+
+        std::array<float, NUM_BASE_TEAM_COLORS> baseHues {};
+        for (size_t team = 0; team < NUM_BASE_TEAM_COLORS; team++)
+            baseHues[team] = teamcolors::dominantHue(teamColorSamples[team]);
+
+        for (int x = 0; x < sprite.getWidth(); x++) {
+            const RGB key = getRgb(sprite.getSurface(), x, 0);
+            const bool recolor = isTeamColorKey(key);
+
+            ColorSheet sheet {};
+            for (size_t playerState = 0; playerState < PlayerPalette::COUNT; playerState++) {
+                std::array<RGB, NUM_BASE_TEAM_COLORS> baseColors {};
+                for (size_t team = 0; team < NUM_BASE_TEAM_COLORS; team++) {
+                    baseColors[team] = teamColor(x, team, playerState);
+                    sheet.replacements[team * PlayerPalette::COUNT + playerState] = baseColors[team];
+                }
+
+                for (size_t i = 0; i < teamcolors::GENERATED_COLORS.size(); i++) {
+                    const size_t team = NUM_BASE_TEAM_COLORS + i;
+                    const size_t baseTeam = teamcolors::GENERATED_COLORS[i].baseTeam;
+                    sheet.replacements[team * PlayerPalette::COUNT + playerState] = recolor
+                        ? teamcolors::generatePaletteColors(baseColors, baseHues)[i]
+                        : baseColors[baseTeam];
                 }
             }
+
+            m_colorsheets.emplace(key, std::move(sheet));
         }
-        baseHues[team] = teamcolors::dominantHue(samples);
-    }
-
-    for (int x = 0; x < sprite.getWidth(); x++) {
-        RGB key = getRgb(sprite.getSurface(), x, 0);
-
-        ColorSheet sheet {};
-        for (size_t playerState = 0; playerState < PlayerPalette::COUNT; playerState++) {
-            std::array<RGB, NUM_BASE_TEAM_COLORS> baseColors {};
-            for (size_t team = 0; team < NUM_BASE_TEAM_COLORS; team++) {
-                baseColors[team] = teamColor(x, team, playerState);
-                sheet.replacements[team * PlayerPalette::COUNT + playerState] = baseColors[team];
-            }
-
-            const auto generated = teamcolors::generatePaletteColors(baseColors, baseHues);
-            for (size_t i = 0; i < generated.size(); i++) {
-                const size_t team = NUM_BASE_TEAM_COLORS + i;
-                sheet.replacements[team * PlayerPalette::COUNT + playerState] = generated[i];
-            }
-        }
-
-        m_colorsheets.emplace(std::move(key), std::move(sheet));
     }
 
     if (SDL_MUSTLOCK(sprite.getSurface()))
