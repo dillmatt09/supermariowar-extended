@@ -103,7 +103,13 @@ struct FontStyle {
     int height = 0;
     RGB outline {0, 0, 0};
     std::vector<RGB> rowFill;
+    int capHeight = 0;      // rows of a capital letter, with its outline
+    int baselineRow = 0;    // last row of a capital letter, with its outline
+    int sampleWidth = 0;    // width of SIZE_SAMPLE in the bitmap font
 };
+
+/// A typical line of menu text, to compare the widths of fonts
+constexpr std::string_view SIZE_SAMPLE = "Graphics Options Menu, Press Any Key To Continue - Player 1 Wins!";
 
 FontStyle readFontStyle(const std::filesystem::path& path)
 {
@@ -159,6 +165,54 @@ FontStyle readFontStyle(const std::filesystem::path& path)
             lastFilled = row;
         } else if (lastFilled >= 0) {
             style.rowFill[row] = style.rowFill[lastFilled];
+        }
+    }
+    // Measure the letters, so that a TTF font can be drawn at the same size
+    const std::vector<std::pair<int, int>> glyphs = [&] {
+        std::vector<std::pair<int, int>> areas;  // start, width of each character from '!'
+        int x = 0;
+        const auto isMarker = [&](int px) { return getRgb(surf.get(), px, 0) == colors::MAGENTA; };
+        while (x < surf->w && !isMarker(x))
+            x++;
+        while (x < surf->w) {
+            while (x < surf->w && isMarker(x))
+                x++;
+            const int start = x;
+            while (x < surf->w && !isMarker(x))
+                x++;
+            if (x > start)
+                areas.emplace_back(start, x - start);
+        }
+        return areas;
+    }();
+    const auto glyphOf = [&](char c) -> const std::pair<int, int>* {
+        const size_t i = static_cast<size_t>(c - ASCII_FIRST_PRINTABLE);
+        return i < glyphs.size() ? &glyphs[i] : nullptr;
+    };
+
+    // The bitmap fonts use the width of '!' for spaces
+    for (char c : SIZE_SAMPLE) {
+        if (const auto* g = glyphOf(c == ' ' ? '!' : c))
+            style.sampleWidth += g->second;
+    }
+
+    style.capHeight = style.height;
+    style.baselineRow = style.height - 1;
+    if (const auto* g = glyphOf('H')) {
+        int top = -1, bottom = -1;
+        for (int row = 0; row < style.height; row++) {
+            for (int px = g->first; px < g->first + g->second; px++) {
+                if (!isBackground(getRgb(surf.get(), px, row + 1))) {
+                    if (top < 0)
+                        top = row;
+                    bottom = row;
+                    break;
+                }
+            }
+        }
+        if (top >= 0) {
+            style.capHeight = bottom - top + 1;
+            style.baselineRow = bottom;
         }
     }
     return style;
@@ -361,16 +415,41 @@ gfxFont::gfxFont(const std::filesystem::path& ttfPath, const std::filesystem::pa
     if (!font)
         throw std::format("Couldn't load {}: {}", path_str, SDL_GetError());
 
-    // Find the largest size where the characters (with their outline) fit in the height of the bitmap font
+    // Find the largest size where the capital letters are no taller, and a typical line of text no
+    // wider, than in the bitmap font
+    TTF_SetFontHinting(font.get(), TTF_HINTING_MONO);
+    const auto fits = [&]() {
+        int capTop = 0;
+        if (!TTF_GetGlyphMetrics(font.get(), 'H', nullptr, nullptr, nullptr, &capTop, nullptr))
+            return TTF_GetFontHeight(font.get()) + 2 * OUTLINE <= style.height;
+        if (capTop + 2 * OUTLINE > style.capHeight)
+            return false;
+
+        int width = 0;
+        for (char c : SIZE_SAMPLE) {
+            int advance = 0;
+            TTF_GetGlyphMetrics(font.get(), c, nullptr, nullptr, nullptr, nullptr, &advance);
+            width += advance + (c == ' ' ? OUTLINE : 2 * OUTLINE);
+        }
+        return style.sampleWidth <= 0 || width <= style.sampleWidth;
+    };
     for (float size = static_cast<float>(style.height); size > 4.f; size -= 0.5f) {
         TTF_SetFontSize(font.get(), size);
-        if (TTF_GetFontHeight(font.get()) + 2 * OUTLINE <= style.height)
+        if (fits())
             break;
     }
-    TTF_SetFontHinting(font.get(), TTF_HINTING_MONO);
 
+    // Put the baseline where the bitmap font has it, as long as the descenders still fit
     const int cellHeight = style.height;
-    const int baselineY = OUTLINE + (cellHeight - 2 * OUTLINE - TTF_GetFontHeight(font.get())) / 2;
+    const int fontHeight = TTF_GetFontHeight(font.get());
+    const int ascent = TTF_GetFontAscent(font.get());
+    int baselineY = style.baselineRow - OUTLINE + 1 - ascent;
+    baselineY = std::min(baselineY, cellHeight - OUTLINE - fontHeight);
+    baselineY = std::max(baselineY, OUTLINE - (ascent - [&] {
+        int capTop = ascent;
+        TTF_GetGlyphMetrics(font.get(), 'H', nullptr, nullptr, nullptr, &capTop, nullptr);
+        return capTop;
+    }()));
 
     std::u32string characters;
     for (char32_t c = ASCII_FIRST_PRINTABLE; c <= ASCII_LAST_PRINTABLE; c++)
