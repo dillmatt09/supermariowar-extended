@@ -1789,7 +1789,10 @@ bool CPlayer::FindSpawnPoint()
     //}
     //else
     //{
-    bool fRet = g_map->findspawnpoint(teamID + 1, &ix, &iy, PW, PH, false);
+    // Maps have spawn zones for teams 1-4 (types 1-4; type 5 is for items). Teams 5-8 use the zones of
+    // teams 1-4 in turn, so they spawn where the map allows players to, and spread over the map like them.
+    const short iSpawnZone = (teamID % NUM_BASE_TEAM_COLORS) + 1;
+    bool fRet = g_map->findspawnpoint(iSpawnZone, &ix, &iy, PW, PH, false);
     //}
 
     fx = (float)ix;
