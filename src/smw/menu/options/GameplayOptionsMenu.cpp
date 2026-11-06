@@ -111,7 +111,7 @@ UI_GameplayOptionsMenu::UI_GameplayOptionsMenu()
     miWarpLockTimeField->setOutputPtr(&game_values.warplocktime);
     miWarpLockTimeField->setCurrentValue(game_values.warplocktime);
 
-    miBotsField = new MI_SelectField<short>(&rm->spr_selectfield, 70, 320, "Bot Difficulty", 500, 220);
+    miBotsField = new MI_SelectField<short>(&rm->spr_selectfield, 70, 320, "CPU Difficulty", 500, 220);
     miBotsField->add("Very Easy", 0);
     miBotsField->add("Easy", 1);
     miBotsField->add("Moderate", 2);
