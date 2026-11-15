@@ -420,7 +420,10 @@ void CResourceManager::loadMenuGraphics()
     spr_selectfield = builder("gfx/packs/menu/menu_selectfield.png").create();
     spr_selectfielddisabled = builder("gfx/packs/menu/menu_selectfield_disabled.png").create();
     spr_map_filter_icons = builder("gfx/packs/menu/menu_map_flags.png").create();
-    spr_tour_markers = builder("gfx/packs/menu/tour_markers.png").create();
+    // Tour place markers for 8 places if the pack has them, otherwise for 4 (5th-8th use the 4th's)
+    spr_tour_markers = loadOptional("gfx/packs/menu/tour_markers_8p.png");
+    if (!spr_tour_markers)
+        spr_tour_markers = builder("gfx/packs/menu/tour_markers.png").create();
     spr_menu_boxed_numbers = builder("gfx/packs/menu/menu_boxed_numbers.png").withTeamBands({teamcolors::Axis::Vertical, 0, 16}).create();
     spr_countdown_numbers = builder("gfx/packs/menu/game_countdown_numbers.png").create();
     spr_thumbnail_warps[0] = builder("gfx/packs/menu/menu_warp_preview.png").create();

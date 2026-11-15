@@ -51,6 +51,14 @@ short MI_TournamentScoreboard::GetPlayerOffsetX(short iTeamSize, short iSlot)
     return 6 + iSlot * (100 - 32) / (iTeamSize - 1);
 }
 
+short MI_TournamentScoreboard::GetPlaceMarker(short iPlace) const
+{
+    // tour_markers.png has a row of 32px markers per place: 4 rows in the original graphics,
+    // 8 in tour_markers_8p.png. Places past the last row use the last one.
+    const short iRows = sprIcons ? static_cast<short>(sprIcons->getHeight() / 32) : 4;
+    return std::clamp<short>(iPlace, 0, std::max<short>(iRows - 1, 0));
+}
+
 short MI_TournamentScoreboard::GetPlaceSprite(short iPlace)
 {
     static const short iPlaceSprite[4] = {4, 0, 8, 9};
@@ -440,8 +448,7 @@ void MI_TournamentScoreboard::RefreshWorldScores(short gameWinner)
         }
 
         worldPlace[iTeam]->SetPosition(m_pos.x + 102, iTeamY + GetContentOffsetY() - 2);
-        // NOTE: The place markers only go up to 4th place
-        worldPlace[iTeam]->SetImage(0, std::min<short>(score[iTeam]->place, 3) << 5, 32, 32);
+        worldPlace[iTeam]->SetImage(0, GetPlaceMarker(score[iTeam]->place) << 5, 32, 32);
         worldPlace[iTeam]->setVisible(gameWinner >= 0);
     }
 
@@ -498,8 +505,7 @@ void MI_TournamentScoreboard::RefreshTourScores()
         }
 
         for (size_t iGame = 0; iGame < game_values.tourstopcurrent; iGame++) {
-            // NOTE: The place markers only go up to 4th place
-            miIconImages[iTeam][iGame]->SetImage(0, std::min<short>(game_values.tournament_scores[iTeam].type[iGame], 3) * 32, 32, 32);
+            miIconImages[iTeam][iGame]->SetImage(0, GetPlaceMarker(game_values.tournament_scores[iTeam].type[iGame]) * 32, 32, 32);
 
             miIconImages[iTeam][iGame]->SetPosition(m_pos.x + 128 + (short)dSpacing + (short)((float)iGame * (32.0f + dSpacing)) - 40, iTeamY + GetContentOffsetY());
 

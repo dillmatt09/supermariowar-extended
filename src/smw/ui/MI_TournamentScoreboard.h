@@ -37,6 +37,8 @@ private:
     }
     static short GetPlayerOffsetX(short iTeamSize, short iSlot);
     static short GetPlaceSprite(short iPlace);
+    /// The row of the tour place marker image for a place (0 = 1st)
+    short GetPlaceMarker(short iPlace) const;
     float GetIconSpacing() const {
         return (float)(372 - iNumGames * 32) / (float)(iNumGames + 1);
     }
