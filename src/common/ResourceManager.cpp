@@ -607,10 +607,13 @@ void CResourceManager::loadAllGraphics()
     loadWorldGraphics();
     loadGameGraphics();
 
-    spr_backmap[0] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().create();
-    spr_backmap[1] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().create();
-    spr_frontmap[0] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().create();
-    spr_frontmap[1] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().create();
+    // The map layers are drawn into for every map (and animated tile), so they must not be RLE encoded:
+    // with RLE, the encoding made for an earlier map could be drawn instead of the new pixels, and the
+    // transparent background of the foreground layer showed up as magenta
+    spr_backmap[0] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().withoutOptimization().create();
+    spr_backmap[1] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().withoutOptimization().create();
+    spr_frontmap[0] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().withoutOptimization().create();
+    spr_frontmap[1] = builder("gfx/packs/backgrounds/Land_Classic.png").withoutColorKey().withoutOptimization().create();
 
     spr_overlay = builder("gfx/packs/menu/menu_shade.png").create();
 }
