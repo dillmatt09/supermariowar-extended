@@ -1,6 +1,7 @@
 #include "WO_Area.h"
 
 #include "GameMode.h"
+#include "GlobalConstants.h"
 #include "GameValues.h"
 #include "map.h"
 #include "ObjectContainer.h"
@@ -16,11 +17,16 @@ extern CResourceManager* rm;
 //------------------------------------------------------------------------------
 // class area (for Domination mode)
 //------------------------------------------------------------------------------
+namespace {
+// areas.png has a neutral frame, then one per team color (generated or baked for 8 colors)
+constexpr short NUM_AREA_FRAMES = 1 + MAX_PLAYERS;
+}
+
 OMO_Area::OMO_Area(gfxSprite* nspr, short iNumAreas)
-    : IO_OverMapObject(nspr, {1280, 960}, 5, 0)
+    : IO_OverMapObject(nspr, {1280, 960}, NUM_AREA_FRAMES, 0)
     , numareas(iNumAreas)
 {
-    iw = (short)spr->getWidth() / 5;
+    iw = (short)spr->getWidth() / NUM_AREA_FRAMES;
     collisionWidth = iw;
 
     objectType = object_area;
