@@ -2,6 +2,7 @@
 #define UI_TEAM_SELECT_H
 
 #include "GlobalConstants.h"
+#include "MI_CharacterGrid.h"
 #include "uimenu.h"
 #include "uicontrol.h"
 
@@ -67,6 +68,13 @@ class MI_TeamSelect : public UI_Control
 
 		short iFastScroll[MAX_PLAYERS];
 		short iFastScrollTimer[MAX_PLAYERS];
+
+		// The grid of characters, opened with the Fast Map menu key (pressed and released alone,
+		// as Fast Map + Random toggles the random character)
+		MI_CharacterGrid mCharacterGrid;
+		bool fGridKeyPending[MAX_PLAYERS];
+		/// Handles the input of the character grid while it's open
+		void HandleCharacterGrid();
 
 	friend class MenuState;
 };

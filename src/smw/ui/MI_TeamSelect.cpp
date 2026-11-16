@@ -29,6 +29,7 @@ MI_TeamSelect::MI_TeamSelect(gfxSprite * spr_background_ref, short x, short y) :
             iTeamIDs[iTeam][iSlot] = game_values.teamids[iTeam][iSlot];
 
         fReady[iTeam] = false;
+        fGridKeyPending[iTeam] = false;
         iFastScroll[iTeam] = 0;
         iFastScrollTimer[iTeam] = 0;
     }
@@ -44,6 +45,8 @@ MI_TeamSelect::~MI_TeamSelect()
 
 void MI_TeamSelect::Update()
 {
+    mCharacterGrid.update();
+
     if (++iAnimationTimer > 7) {
         iAnimationTimer = 0;
 
@@ -222,6 +225,8 @@ void MI_TeamSelect::Draw()
         rm->menu_plain_field.draw(m_pos.x + 208, m_pos.y + App::screenHeight * 0.47f, {412, 160, 100, 32});
         rm->menu_font_large.drawCentered(App::screenWidth/2, m_pos.y + App::screenHeight * 0.48f, "Continue");
     }
+
+    mCharacterGrid.draw();
 }
 
 bool MI_TeamSelect::IsHuman(short iPlayer) const
@@ -398,8 +403,34 @@ void MI_TeamSelect::HandleSelection(short iTarget, COutputControl * playerKeys)
     }
 }
 
+void MI_TeamSelect::HandleCharacterGrid()
+{
+    const short iTarget = mCharacterGrid.target();
+    switch (mCharacterGrid.handleInput(game_values.playerInput.outputControls[mCharacterGrid.owner()])) {
+    case MI_CharacterGrid::Result::Chosen:
+        game_values.skinids[iTarget] = mCharacterGrid.chosenSkin();
+        game_values.randomskin[iTarget] = false;
+        rm->LoadMenuSkin(iTarget, game_values.skinids[iTarget], game_values.colorids[iTarget], false);
+        mCharacterGrid.close();
+        break;
+    case MI_CharacterGrid::Result::Cancelled:
+        mCharacterGrid.close();
+        break;
+    case MI_CharacterGrid::Result::None:
+        break;
+    }
+}
+
 MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
 {
+    // While the character grid is open, only its owner uses it, and nothing else happens
+    if (mCharacterGrid.isOpen()) {
+        HandleCharacterGrid();
+        for (bool& fPending : fGridKeyPending)
+            fPending = false;
+        return MENU_CODE_NONE;
+    }
+
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
         COutputControl * playerKeys = &game_values.playerInput.outputControls[iPlayer];
         const bool fCanLeave = DEVICE_KEYBOARD != playerInput->inputControls[iPlayer]->iDevice || iPlayer == 0;
@@ -413,8 +444,22 @@ MenuCodeEnum MI_TeamSelect::SendInput(CPlayerInput * playerInput)
         else if (fChoosesForCpus)
             iTarget = GetCpuBeingChosen(iPlayer);
 
-        if (iTarget >= 0)
+        if (iTarget >= 0) {
+            // Fast Map opens the character grid when it's released without Random having been pressed
+            if (playerKeys->menu_scrollfast.fPressed)
+                fGridKeyPending[iPlayer] = true;
+            if (playerKeys->menu_random.fPressed)
+                fGridKeyPending[iPlayer] = false;
+            if (fGridKeyPending[iPlayer] && !playerKeys->menu_scrollfast.fDown) {
+                fGridKeyPending[iPlayer] = false;
+                mCharacterGrid.open(iPlayer, iTarget);
+                return MENU_CODE_NONE;
+            }
+
             HandleSelection(iTarget, playerKeys);
+        } else {
+            fGridKeyPending[iPlayer] = false;
+        }
 
         if (playerKeys->menu_select.fPressed) {
             if (fAllReady && fCanLeave) {
@@ -523,6 +568,8 @@ void MI_TeamSelect::SetPlayerColor(short iPlayerID, short iTeam)
 
 void MI_TeamSelect::Reset()
 {
+    mCharacterGrid.close();
+
     const short iSlots = GetTeamSlotCount();
 
     for (short iPlayer = 0; iPlayer < MAX_PLAYERS; iPlayer++) {
